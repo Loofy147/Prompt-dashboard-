@@ -21,7 +21,7 @@ This prompt was used to generate all deliverables below.
 
 ```
 prompt-dashboard/
-├── backend/
+├── api/
 │   ├── app.py                    ✓ Flask API with 9 endpoints
 │   ├── quality_calculator.py     ✓ Core PES quality engine
 │   ├── seed_data.py              ✓ Database seeding with 5 examples
@@ -109,7 +109,7 @@ prompt-dashboard/
 
 ### 7. Deployment Configuration ✓
 - **docker-compose.yml**: Multi-service orchestration
-- **backend/Dockerfile**: Python 3.11 container
+- **api/Dockerfile**: Python 3.11 container
 - **frontend/Dockerfile**: Node 18 with multi-stage build
 - **Health checks**: Included for backend service
 - **Volume management**: Persistent database storage
@@ -212,7 +212,7 @@ docker-compose exec backend pytest tests/test_quality.py -v
 
 ### Performance Benchmark
 ```bash
-docker-compose exec backend python backend/quality_calculator.py
+docker-compose exec backend python api/quality_calculator.py
 
 # Expected output:
 # Average time per calculation: 0.XXXX ms

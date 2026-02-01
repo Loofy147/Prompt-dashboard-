@@ -2,8 +2,8 @@ import pytest
 import sys
 import os
 
-# Add backend to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend'))
+# Add api to path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'api'))
 
 from quality_calculator import compute_Q, get_quality_level, validate_features
 

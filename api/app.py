@@ -10,8 +10,9 @@ app = Flask(__name__)
 CORS(app)
 
 # Database Configuration
-db_path = os.path.join(os.path.dirname(__file__), 'prompts.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+# Fallback to SQLite if DATABASE_URL is not set
+default_db = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'prompts.db')}"
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', default_db)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 

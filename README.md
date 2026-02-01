@@ -65,7 +65,7 @@ That's it! The dashboard is now running with 5 example prompts spanning differen
 
 ```
 prompt-dashboard/
-├── backend/                    # Flask/FastAPI backend
+├── api/                    # Flask/FastAPI backend
 │   ├── app.py                 # Main application entry point
 │   ├── quality_calculator.py  # Core Q score computation
 │   ├── feature_analyzer.py    # NLP-based feature extraction
@@ -288,7 +288,7 @@ Expected: <1ms per Q calculation
 
 ```bash
 # Backend (without Docker)
-cd backend
+cd api
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -341,14 +341,28 @@ Each demonstrates different strengths and weaknesses in the PES framework.
 
 ## 🚢 Deployment
 
-### Production Deployment
+### Vercel Deployment (Recommended)
+
+This project is configured for seamless deployment on [Vercel](https://vercel.com).
+
+1.  **Connect your Repository** to Vercel.
+2.  **Configure Environment Variables**:
+    *   `DATABASE_URL`: Your Neon Postgres connection string.
+3.  **Deploy**: Vercel will automatically detect the `vercel.json` and build both the Python API and the React frontend.
+
+### Docker Hub (Establishment)
+
+The project is established on Docker Hub under the `django213` namespace.
 
 ```bash
-# Build production images
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml build
+docker login -u django213
+docker build -t django213/prompt-dashboard-backend ./api
+docker build -t django213/prompt-dashboard-frontend ./frontend
+docker push django213/prompt-dashboard-backend
+docker push django213/prompt-dashboard-frontend
+```
 
-# Start production stack
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+### Production Deployment (Docker Compose)
 
 # Enable HTTPS with Let's Encrypt
 docker-compose exec nginx certbot --nginx -d yourdomain.com
@@ -412,7 +426,7 @@ docker-compose logs -f frontend
 - **API Specification**: `docs/openapi.yaml` (OpenAPI 3.0)
 - **Database Schema**: `docs/database_schema.dbml` (ERD)
 - **UI Wireframes**: `docs/wireframes.txt` (ASCII art)
-- **Quality Calculator**: See `backend/quality_calculator.py` docstrings
+- **Quality Calculator**: See `api/quality_calculator.py` docstrings
 
 ## 🤝 Contributing
 
