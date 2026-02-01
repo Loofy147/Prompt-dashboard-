@@ -30,6 +30,11 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
   const [qualityScores, setQualityScores] = useState<QualityScores | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [refinement, setRefinement] = useState<{
+    weakest_dimension: string;
+    actionable_instruction: string;
+  } | null>(null);
+  const [isRefining, setIsRefining] = useState(false);
 
   // Debounced quality analysis when text changes
   const analyzeQuality = useCallback(
@@ -62,7 +67,26 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
   // Trigger analysis when text changes
   useEffect(() => {
     analyzeQuality(text);
+    setRefinement(null); // Reset refinement when text changes
   }, [text, analyzeQuality]);
+
+  const handleRefine = async () => {
+    if (!text.trim()) return;
+    setIsRefining(true);
+    try {
+      const response = await fetch('/api/prompts/refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      const data = await response.json();
+      setRefinement(data);
+    } catch (error) {
+      console.error('Refinement failed:', error);
+    } finally {
+      setIsRefining(false);
+    }
+  };
 
   // Character counter
   const charCount = text.length;
@@ -172,17 +196,40 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
           <button
             onClick={handleSave}
             disabled={!text.trim()}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
+            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium shadow-sm transition-all active:scale-95"
           >
             Save Prompt
           </button>
           <button
+            onClick={handleRefine}
+            disabled={!text.trim() || isRefining}
+            className="px-6 py-2 bg-white text-indigo-600 border border-indigo-600 rounded-lg hover:bg-indigo-50 disabled:opacity-50 font-medium shadow-sm transition-all active:scale-95"
+          >
+            {isRefining ? 'Analyzing...' : 'Optimize'}
+          </button>
+          <button
             onClick={onCancel}
-            className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+            className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-all"
           >
             Cancel
           </button>
         </div>
+
+        {refinement && (
+          <div className="mt-6 p-4 bg-indigo-50 border border-indigo-100 rounded-xl shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center">
+                <span className="text-white text-[10px] font-bold">!</span>
+              </div>
+              <h4 className="text-sm font-bold text-indigo-900">
+                Optimization Tip: {refinement.weakest_dimension}
+              </h4>
+            </div>
+            <p className="text-sm text-indigo-700 leading-relaxed">
+              {refinement.actionable_instruction}
+            </p>
+          </div>
+        )}
 
         {lastSaved && (
           <p className="text-sm text-gray-500 mt-2">
