@@ -1,0 +1,81 @@
+graph TB
+    subgraph "Client Layer"
+        Browser[Web Browser]
+    end
+
+    subgraph "Frontend - React SPA"
+        LibraryView[Library View<br/>Prompt Grid + Search]
+        EditorView[Editor View<br/>Live Q Calculator]
+        AnalyzerView[Analyzer View<br/>A/B/C Comparison]
+        ReportsView[Reports View<br/>Analytics Dashboard]
+
+        Components[Shared Components<br/>PromptCard, QualityCalculator,<br/>VariantComparison, SearchBar]
+        StateManagement[State Management<br/>Redux Toolkit / Zustand]
+        APIClient[API Client<br/>React Query + Axios]
+    end
+
+    subgraph "Backend - Flask/FastAPI"
+        APIGateway[API Gateway<br/>JWT Auth Middleware]
+
+        PromptController[Prompt Controller<br/>CRUD Operations]
+        AnalysisController[Analysis Controller<br/>Quality Scoring]
+        VariantController[Variant Controller<br/>A/B/C Generation]
+        AnalyticsController[Analytics Controller<br/>Aggregations]
+        ExportController[Export Controller<br/>JSON/MD/CSV]
+
+        QualityEngine[Quality Engine<br/>quality_calculator.py]
+        NLPAnalyzer[NLP Analyzer<br/>feature_analyzer.py<br/>spaCy]
+        VariantGenerator[Variant Generator<br/>Text Transformations]
+    end
+
+    subgraph "Data Layer"
+        SQLite[(SQLite Database<br/>prompts, variants,<br/>tags, versions,<br/>test_runs)]
+    end
+
+    Browser --> LibraryView
+    Browser --> EditorView
+    Browser --> AnalyzerView
+    Browser --> ReportsView
+
+    LibraryView --> APIClient
+    EditorView --> APIClient
+    AnalyzerView --> APIClient
+    ReportsView --> APIClient
+
+    LibraryView --> Components
+    EditorView --> Components
+    AnalyzerView --> Components
+    ReportsView --> Components
+
+    APIClient --> StateManagement
+    APIClient --> APIGateway
+
+    APIGateway --> PromptController
+    APIGateway --> AnalysisController
+    APIGateway --> VariantController
+    APIGateway --> AnalyticsController
+    APIGateway --> ExportController
+
+    PromptController --> SQLite
+    AnalysisController --> QualityEngine
+    AnalysisController --> NLPAnalyzer
+    VariantController --> VariantGenerator
+    VariantController --> QualityEngine
+    AnalyticsController --> SQLite
+    ExportController --> SQLite
+
+    QualityEngine --> SQLite
+    NLPAnalyzer -.->|Optional| ExternalNLP[spaCy Models]
+    VariantGenerator --> SQLite
+
+    style Browser fill:#e1f5ff
+    style SQLite fill:#fff4e1
+    style QualityEngine fill:#ffe1f5
+    style NLPAnalyzer fill:#ffe1f5
+    style VariantGenerator fill:#ffe1f5
+
+%% Data Flow Examples
+%% 1. Create Prompt: Browser -> EditorView -> APIClient -> PromptController -> SQLite
+%% 2. Analyze Quality: EditorView -> AnalysisController -> QualityEngine -> NLPAnalyzer -> return scores
+%% 3. Generate Variants: AnalyzerView -> VariantController -> VariantGenerator -> QualityEngine -> SQLite
+%% 4. View Analytics: ReportsView -> AnalyticsController -> SQLite -> aggregate -> return metrics

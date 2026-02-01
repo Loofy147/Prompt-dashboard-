@@ -1,0 +1,604 @@
+openapi: 3.0.0
+info:
+  title: Prompt Dashboard Manager API
+  description: RESTful API for managing and analyzing AI prompts with quality scoring
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@promptdashboard.dev
+
+servers:
+  - url: http://localhost:5000/api
+    description: Development server
+  - url: https://api.promptdashboard.dev
+    description: Production server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Prompt:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 42
+        user_id:
+          type: integer
+          example: 1
+        text:
+          type: string
+          maxLength: 10000
+          example: "You are a Senior Product Manager. Write a technical specification for user authentication feature."
+        persona:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.92
+        tone:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.88
+        format:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.95
+        specificity:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.90
+        constraints:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.85
+        context:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.70
+        Q_score:
+          type: number
+          format: float
+          example: 0.88
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["technical", "authentication", "backend"]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Variant:
+      type: object
+      properties:
+        id:
+          type: integer
+        prompt_id:
+          type: integer
+        variant_type:
+          type: string
+          enum: [concise, neutral, commanding]
+        text:
+          type: string
+        Q_score:
+          type: number
+        metrics_json:
+          type: object
+          properties:
+            relevance:
+              type: integer
+              minimum: 0
+              maximum: 10
+            factuality:
+              type: integer
+              minimum: 0
+              maximum: 10
+            style:
+              type: integer
+              minimum: 0
+              maximum: 10
+            usefulness:
+              type: integer
+              minimum: 0
+              maximum: 10
+        created_at:
+          type: string
+          format: date-time
+
+    QualityAnalysis:
+      type: object
+      properties:
+        features:
+          type: object
+          properties:
+            P:
+              type: number
+            T:
+              type: number
+            F:
+              type: number
+            S:
+              type: number
+            C:
+              type: number
+            R:
+              type: number
+        Q_score:
+          type: number
+        breakdown:
+          type: object
+          properties:
+            wP_P:
+              type: number
+            wT_T:
+              type: number
+            wF_F:
+              type: number
+            wS_S:
+              type: number
+            wC_C:
+              type: number
+            wR_R:
+              type: number
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+security:
+  - bearerAuth: []
+
+paths:
+  /prompts:
+    post:
+      summary: Create a new prompt
+      tags: [Prompts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  maxLength: 10000
+                tags:
+                  type: array
+                  items:
+                    type: string
+                metadata:
+                  type: object
+            example:
+              text: "You are a Technical Writer. Create comprehensive API documentation for the authentication endpoint including examples, error codes, and security considerations."
+              tags: ["documentation", "api", "technical"]
+              metadata:
+                project: "auth-system"
+                priority: "high"
+      responses:
+        '201':
+          description: Prompt created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prompt'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "ValidationError"
+                message: "Text exceeds maximum length of 10000 characters"
+                details:
+                  field: "text"
+                  current_length: 12500
+        '401':
+          description: Unauthorized
+
+    get:
+      summary: List prompts with filtering and pagination
+      tags: [Prompts]
+      parameters:
+        - name: q
+          in: query
+          description: Search query for full-text search
+          schema:
+            type: string
+          example: "technical specification"
+        - name: tags
+          in: query
+          description: Comma-separated tag filters (AND logic)
+          schema:
+            type: string
+          example: "technical,backend"
+        - name: Q_min
+          in: query
+          description: Minimum quality score
+          schema:
+            type: number
+            minimum: 0
+            maximum: 1
+          example: 0.80
+        - name: Q_max
+          in: query
+          description: Maximum quality score
+          schema:
+            type: number
+            minimum: 0
+            maximum: 1
+          example: 1.0
+        - name: date_from
+          in: query
+          description: Filter prompts created after this date
+          schema:
+            type: string
+            format: date
+          example: "2025-01-01"
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: List of prompts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  prompts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Prompt'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  pages:
+                    type: integer
+              example:
+                prompts:
+                  - id: 42
+                    text: "You are a Product Manager..."
+                    Q_score: 0.88
+                    tags: ["technical", "spec"]
+                total: 156
+                page: 1
+                per_page: 20
+                pages: 8
+
+  /prompts/{id}:
+    get:
+      summary: Get a single prompt by ID
+      tags: [Prompts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Prompt details with variants
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Prompt'
+                  - type: object
+                    properties:
+                      variants:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Variant'
+        '404':
+          description: Prompt not found
+
+    put:
+      summary: Update a prompt (creates version snapshot)
+      tags: [Prompts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Prompt updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prompt'
+        '404':
+          description: Prompt not found
+
+    delete:
+      summary: Soft delete a prompt
+      tags: [Prompts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Prompt deleted successfully
+        '404':
+          description: Prompt not found
+
+  /prompts/{id}/analyze:
+    post:
+      summary: Compute quality scores for a prompt
+      tags: [Analysis]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Quality analysis results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityAnalysis'
+              example:
+                features:
+                  P: 0.92
+                  T: 0.88
+                  F: 0.95
+                  S: 0.90
+                  C: 0.85
+                  R: 0.70
+                Q_score: 0.8766
+                breakdown:
+                  wP_P: 0.1656
+                  wT_T: 0.1936
+                  wF_F: 0.1900
+                  wS_S: 0.1620
+                  wC_C: 0.1020
+                  wR_R: 0.0700
+
+  /prompts/{id}/variants:
+    post:
+      summary: Generate A/B/C test variants
+      tags: [Variants]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                variant_types:
+                  type: array
+                  items:
+                    type: string
+                    enum: [concise, neutral, commanding]
+                  default: ["concise", "neutral", "commanding"]
+      responses:
+        '201':
+          description: Variants generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  variants:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Variant'
+                  comparison:
+                    type: object
+                    properties:
+                      winner:
+                        type: string
+                      Q_scores:
+                        type: object
+
+  /analytics:
+    get:
+      summary: Get aggregate analytics and metrics
+      tags: [Analytics]
+      parameters:
+        - name: metric
+          in: query
+          description: Specific metric to retrieve
+          schema:
+            type: string
+            enum: [distribution, trends, top_performers, tag_cloud]
+        - name: days
+          in: query
+          description: Time range in days
+          schema:
+            type: integer
+            default: 30
+      responses:
+        '200':
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  distribution:
+                    type: object
+                    properties:
+                      buckets:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            range:
+                              type: string
+                            count:
+                              type: integer
+                  avg_scores:
+                    type: object
+                    properties:
+                      P:
+                        type: number
+                      T:
+                        type: number
+                      F:
+                        type: number
+                      S:
+                        type: number
+                      C:
+                        type: number
+                      R:
+                        type: number
+                      Q:
+                        type: number
+                  top_performers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        text_preview:
+                          type: string
+                        Q_score:
+                          type: number
+                  tag_cloud:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tag:
+                          type: string
+                        count:
+                          type: integer
+
+  /export:
+    post:
+      summary: Export prompts in various formats
+      tags: [Export]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                format:
+                  type: string
+                  enum: [json, markdown, csv]
+                  default: json
+                prompt_ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: "Specific prompt IDs to export (empty = all)"
+                include_variants:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Export file
+          content:
+            application/json:
+              schema:
+                type: object
+            text/markdown:
+              schema:
+                type: string
+            text/csv:
+              schema:
+                type: string
+
+# Example curl commands:
+
+# 1. Create a prompt
+# curl -X POST http://localhost:5000/api/prompts \
+#   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+#   -H "Content-Type: application/json" \
+#   -d '{
+#     "text": "You are a Senior Engineer. Design a scalable microservices architecture.",
+#     "tags": ["architecture", "technical"]
+#   }'
+
+# 2. List prompts with filters
+# curl -X GET "http://localhost:5000/api/prompts?Q_min=0.85&tags=technical&page=1" \
+#   -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# 3. Analyze prompt quality
+# curl -X POST http://localhost:5000/api/prompts/42/analyze \
+#   -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# 4. Generate variants
+# curl -X POST http://localhost:5000/api/prompts/42/variants \
+#   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+#   -H "Content-Type: application/json" \
+#   -d '{"variant_types": ["concise", "neutral", "commanding"]}'
+
+# 5. Get analytics
+# curl -X GET "http://localhost:5000/api/analytics?metric=distribution&days=30" \
+#   -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# 6. Export prompts
+# curl -X POST http://localhost:5000/api/export \
+#   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+#   -H "Content-Type: application/json" \
+#   -d '{"format": "json", "include_variants": true}' \
+#   -o prompts_export.json
