@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PromptEditor from './components/PromptEditor';
+import { Analytics } from "@vercel/analytics/react";
 
 interface Prompt {
   id: number;
@@ -144,6 +145,7 @@ const App: React.FC = () => {
           </div>
         )}
       </main>
+      <Analytics />
     </div>
   );
 };
