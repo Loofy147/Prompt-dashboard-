@@ -1,0 +1,9 @@
+flask
+flask-cors
+flask-sqlalchemy
+spacy
+pandas
+pytest
+pytest-cov
+pyjwt
+psycopg2-binary

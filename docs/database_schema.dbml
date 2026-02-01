@@ -1,0 +1,40 @@
+// Prompt Dashboard Manager Database Schema
+
+Table prompts {
+  id integer [primary key]
+  text text [not null]
+  Q_score float [not null]
+  created_at timestamp
+  deleted_at timestamp
+}
+
+Table variants {
+  id integer [primary key]
+  prompt_id integer
+  type text // concise, neutral, commanding
+  text text
+  Q_score float
+}
+
+Table tags {
+  id integer [primary key]
+  name text [unique]
+}
+
+Table prompt_tags {
+  prompt_id integer
+  tag_id integer
+}
+
+Table versions {
+  id integer [primary key]
+  prompt_id integer
+  text text
+  Q_score float
+  created_at timestamp
+}
+
+Ref: variants.prompt_id > prompts.id
+Ref: prompt_tags.prompt_id > prompts.id
+Ref: prompt_tags.tag_id > tags.id
+Ref: versions.prompt_id > prompts.id
