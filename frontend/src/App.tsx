@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Zap, Palette, Layers, ShieldCheck, Download, History } from 'lucide-react';
 import PromptEditor from './components/PromptEditor';
 
 interface Prompt {
@@ -6,10 +7,12 @@ interface Prompt {
   text: string;
   tags: string[];
   Q_score: number;
+  version: number;
+  parent_id: number | null;
   created_at: string;
 }
 
-const PromptCard: React.FC<{ prompt: Prompt }> = ({ prompt }) => {
+const PromptCard: React.FC<{ prompt: Prompt; onEdit: (p: Prompt) => void }> = ({ prompt, onEdit }) => {
   const getLevelColor = (q: number) => {
     if (q >= 0.9) return 'bg-green-100 text-green-800 border-green-200';
     if (q >= 0.8) return 'bg-blue-100 text-blue-800 border-blue-200';
@@ -18,12 +21,20 @@ const PromptCard: React.FC<{ prompt: Prompt }> = ({ prompt }) => {
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+    <div
+      className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-palette-primary/5 transition-all cursor-pointer group"
+      onClick={() => onEdit(prompt)}
+    >
       <div className="flex justify-between items-start mb-3">
-        <span className={`px-2 py-0.5 rounded text-xs font-bold border ${getLevelColor(prompt.Q_score)}`}>
-          Q: {prompt.Q_score.toFixed(2)}
-        </span>
-        <span className="text-[10px] text-gray-400">#{prompt.id}</span>
+        <div className="flex gap-2">
+          <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black border ${getLevelColor(prompt.Q_score)}`}>
+            Q: {prompt.Q_score.toFixed(4)}
+          </span>
+          <span className="px-2 py-0.5 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-bold border border-gray-100 flex items-center gap-1">
+            <History size={8} /> v{prompt.version}
+          </span>
+        </div>
+        <span className="text-[10px] text-gray-300 font-mono">#{prompt.id}</span>
       </div>
       <p className="text-sm text-gray-700 line-clamp-3 mb-4 h-15">
         {prompt.text}
@@ -43,6 +54,7 @@ const App: React.FC = () => {
   const [view, setView] = useState<'library' | 'editor'>('editor');
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
 
   useEffect(() => {
     if (view === 'library') {
@@ -63,28 +75,40 @@ const App: React.FC = () => {
     }
   };
 
+  const handleExport = async (format: 'json' | 'csv') => {
+    const url = `/api/prompts/export?format=${format}`;
+    window.open(url, '_blank');
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-indigo-700 text-white p-4 shadow-md">
+    <div className="min-h-screen bg-palette-light font-sans">
+      <nav className="bg-palette-dark text-white p-4 shadow-xl border-b border-palette-primary/20">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-indigo-700 font-bold">P</span>
+          <div className="flex items-center gap-3 group">
+            <div className="w-10 h-10 bg-gradient-to-br from-palette-primary to-palette-secondary rounded-xl flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+              <Zap className="text-white w-6 h-6 fill-current text-bolt-light" />
             </div>
-            <h1 className="text-xl font-bold tracking-tight">Prompt Dashboard</h1>
+            <div>
+              <h1 className="text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+                PROMPT <span className="text-palette-primary">ARCHITECT</span>
+              </h1>
+              <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-gray-500 font-bold">
+                <ShieldCheck size={10} className="text-accent" /> ROBUST ENGINE | <Zap size={10} className="text-bolt" /> BOLT v2.0
+              </div>
+            </div>
           </div>
-          <div className="flex gap-1 bg-indigo-800 p-1 rounded-lg">
+          <div className="flex gap-2 bg-gray-900/50 p-1 rounded-xl border border-white/5">
             <button
               onClick={() => setView('library')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${view === 'library' ? 'bg-indigo-600 shadow-sm' : 'hover:bg-indigo-700/50'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${view === 'library' ? 'bg-palette-primary text-white shadow-lg shadow-palette-primary/30' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
             >
-              Library
+              <Layers size={16} /> Library
             </button>
             <button
               onClick={() => setView('editor')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${view === 'editor' ? 'bg-indigo-600 shadow-sm' : 'hover:bg-indigo-700/50'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${view === 'editor' ? 'bg-palette-primary text-white shadow-lg shadow-palette-primary/30' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
             >
-              Editor
+              <Palette size={16} /> Designer
             </button>
           </div>
         </div>
@@ -92,26 +116,62 @@ const App: React.FC = () => {
 
       <main className="max-w-7xl mx-auto p-6">
         {view === 'editor' ? (
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl shadow-palette-dark/5 border border-gray-100">
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900">Advanced Prompt Editor</h2>
-              <p className="text-gray-500 mt-1">Refine your prompts using the PES Quality Framework.</p>
+              <h2 className="text-3xl font-black text-palette-dark tracking-tighter">
+                {editingPrompt ? 'REFINE VERSION' : 'PROMPT DESIGNER'}
+              </h2>
+              <p className="text-gray-400 font-medium mt-1">
+                {editingPrompt ? `Iterating on prompt #${editingPrompt.id} (v${editingPrompt.version})` : 'Crafting high-performance machine directives.'}
+              </p>
             </div>
-            <PromptEditor onSave={() => setView('library')} />
+            <PromptEditor
+              initialText={editingPrompt?.text}
+              initialTags={editingPrompt?.tags}
+              parentId={editingPrompt?.id}
+              onSave={() => {
+                setEditingPrompt(null);
+                setView('library');
+              }}
+              onCancel={() => {
+                setEditingPrompt(null);
+                setView('library');
+              }}
+            />
           </div>
         ) : (
           <div>
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Prompt Library</h2>
-                <p className="text-gray-500 mt-1">Manage and monitor your prompt performance.</p>
+                <h2 className="text-3xl font-black text-palette-dark tracking-tighter uppercase">ARCHIVE</h2>
+                <p className="text-gray-400 font-medium mt-1">History of computational directives.</p>
               </div>
-              <button
-                onClick={() => setView('editor')}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
-              >
-                + New Prompt
-              </button>
+              <div className="flex gap-2">
+                <div className="flex bg-white rounded-xl shadow-sm border border-gray-100 p-1">
+                  <button
+                    onClick={() => handleExport('json')}
+                    className="p-2 hover:bg-gray-50 text-gray-400 hover:text-palette-primary transition-colors flex items-center gap-2 text-xs font-bold"
+                  >
+                    <Download size={14} /> JSON
+                  </button>
+                  <div className="w-px h-4 bg-gray-100 self-center"></div>
+                  <button
+                    onClick={() => handleExport('csv')}
+                    className="p-2 hover:bg-gray-50 text-gray-400 hover:text-palette-primary transition-colors flex items-center gap-2 text-xs font-bold"
+                  >
+                    <Download size={14} /> CSV
+                  </button>
+                </div>
+                <button
+                  onClick={() => {
+                    setEditingPrompt(null);
+                    setView('editor');
+                  }}
+                  className="px-6 py-2 bg-palette-primary text-white rounded-xl hover:bg-palette-primary/90 font-bold shadow-lg shadow-palette-primary/20 transition-all flex items-center gap-2"
+                >
+                  <Zap size={16} /> NEW DIRECTIVE
+                </button>
+              </div>
             </div>
 
             {loading ? (
@@ -123,7 +183,14 @@ const App: React.FC = () => {
             ) : prompts.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {prompts.map(prompt => (
-                  <PromptCard key={prompt.id} prompt={prompt} />
+                  <PromptCard
+                    key={prompt.id}
+                    prompt={prompt}
+                    onEdit={(p) => {
+                      setEditingPrompt(p);
+                      setView('editor');
+                    }}
+                  />
                 ))}
               </div>
             ) : (

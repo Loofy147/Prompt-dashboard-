@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { debounce } from 'lodash';
 import QualityCalculator from './QualityCalculator';
+import { Zap, Sparkles, Save, XCircle } from 'lucide-react';
 
 interface PromptEditorProps {
   initialText?: string;
   initialTags?: string[];
+  parentId?: number;
   onSave?: (data: { text: string; tags: string[] }) => void;
   onCancel?: () => void;
 }
@@ -21,6 +23,7 @@ interface QualityScores {
 const PromptEditor: React.FC<PromptEditorProps> = ({
   initialText = '',
   initialTags = [],
+  parentId,
   onSave,
   onCancel
 }) => {
@@ -60,7 +63,7 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
       } finally {
         setIsAnalyzing(false);
       }
-    }, 500),
+    }, 250), // Bolt ⚡ faster debounce
     []
   );
 
@@ -110,10 +113,26 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
   };
 
   // Save handler
-  const handleSave = () => {
-    if (onSave) {
-      onSave({ text, tags });
-      setLastSaved(new Date());
+  const handleSave = async () => {
+    try {
+      const response = await fetch('/api/prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          tags,
+          parent_id: parentId
+        })
+      });
+
+      if (response.ok) {
+        if (onSave) {
+          onSave({ text, tags });
+        }
+        setLastSaved(new Date());
+      }
+    } catch (error) {
+      console.error('Failed to save prompt:', error);
     }
   };
 
@@ -196,22 +215,22 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
           <button
             onClick={handleSave}
             disabled={!text.trim()}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium shadow-sm transition-all active:scale-95"
+            className="flex items-center gap-2 px-6 py-2.5 bg-palette-primary text-white rounded-xl hover:bg-palette-primary/90 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold shadow-lg shadow-palette-primary/20 transition-all active:scale-95"
           >
-            Save Prompt
+            <Save size={18} /> {parentId ? 'SAVE VERSION' : 'SAVE PROMPT'}
           </button>
           <button
             onClick={handleRefine}
             disabled={!text.trim() || isRefining}
-            className="px-6 py-2 bg-white text-indigo-600 border border-indigo-600 rounded-lg hover:bg-indigo-50 disabled:opacity-50 font-medium shadow-sm transition-all active:scale-95"
+            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-palette-secondary to-palette-primary text-white rounded-xl hover:opacity-90 disabled:opacity-50 font-bold shadow-lg shadow-palette-secondary/20 transition-all active:scale-95"
           >
-            {isRefining ? 'Analyzing...' : 'Optimize'}
+            <Zap size={18} className={isRefining ? 'animate-pulse' : ''} /> {isRefining ? 'BOLT ANALYZING...' : 'BOLT OPTIMIZE'}
           </button>
           <button
             onClick={onCancel}
-            className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-all"
+            className="flex items-center gap-2 px-6 py-2.5 bg-white text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 font-bold transition-all"
           >
-            Cancel
+            <XCircle size={18} /> Cancel
           </button>
         </div>
 

@@ -44,10 +44,10 @@ const QualityCalculator: React.FC<QualityCalculatorProps> = ({ scores, isLoading
   }, 0);
 
   const getLevel = (score: number) => {
-    if (score >= 0.90) return { label: 'Excellent', color: 'text-green-600', bg: 'bg-green-100', bar: 'bg-green-500' };
-    if (score >= 0.80) return { label: 'Good', color: 'text-blue-600', bg: 'bg-blue-100', bar: 'bg-blue-500' };
-    if (score >= 0.70) return { label: 'Fair', color: 'text-yellow-600', bg: 'bg-yellow-100', bar: 'bg-yellow-500' };
-    return { label: 'Poor', color: 'text-red-600', bg: 'bg-red-100', bar: 'bg-red-500' };
+    if (score >= 0.90) return { label: 'Excellent', color: 'text-accent', bg: 'bg-accent/10', bar: 'bg-accent shadow-[0_0_8px_rgba(16,185,129,0.5)]' };
+    if (score >= 0.80) return { label: 'Good', color: 'text-palette-primary', bg: 'bg-palette-primary/10', bar: 'bg-palette-primary shadow-[0_0_8px_rgba(99,102,241,0.5)]' };
+    if (score >= 0.70) return { label: 'Fair', color: 'text-bolt', bg: 'bg-bolt/10', bar: 'bg-bolt shadow-[0_0_8px_rgba(245,158,11,0.5)]' };
+    return { label: 'Poor', color: 'text-palette-secondary', bg: 'bg-palette-secondary/10', bar: 'bg-palette-secondary shadow-[0_0_8px_rgba(236,72,153,0.5)]' };
   };
 
   const level = getLevel(Q);
@@ -62,11 +62,13 @@ const QualityCalculator: React.FC<QualityCalculatorProps> = ({ scores, isLoading
   ];
 
   return (
-    <div className="p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
+    <div className="p-6 bg-white rounded-2xl border border-gray-100 shadow-xl shadow-palette-dark/5">
       <div className="flex justify-between items-end mb-6">
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Quality Score (Q)</h2>
-          <div className="text-4xl font-bold mt-1">{Q.toFixed(4)}</div>
+          <h2 className="text-xs font-black text-gray-400 uppercase tracking-tighter">QUALITY SCORE</h2>
+          <div className="text-5xl font-black mt-1 bg-clip-text text-transparent bg-gradient-to-br from-palette-dark to-palette-primary tracking-tighter">
+            {Q.toFixed(4)}
+          </div>
         </div>
         <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${level.bg} ${level.color}`}>
           {level.label}

@@ -2,9 +2,16 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from quality_calculator import compute_Q, suggest_improvements, get_quality_level
+from feature_analyzer import estimate_features
+from variant_generator import generate_variants_logic
 import datetime
 import json
 import os
+import logging
+
+# Configure logging for robustness
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
@@ -22,6 +29,8 @@ class PromptModel(db.Model):
     tags_json = db.Column(db.Text, default='[]')
     q_score = db.Column(db.Float, nullable=False)
     features_json = db.Column(db.Text, nullable=False)
+    version = db.Column(db.Integer, default=1)
+    parent_id = db.Column(db.Integer, db.ForeignKey('prompt_model.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
     @property
@@ -47,82 +56,65 @@ class PromptModel(db.Model):
             "tags": self.tags,
             "Q_score": self.q_score,
             "features": self.features,
+            "version": self.version,
+            "parent_id": self.parent_id,
             "created_at": self.created_at.isoformat()
         }
 
 with app.app_context():
     db.create_all()
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logger.error(f"Unhandled exception: {str(e)}")
+    return jsonify({"error": "Internal Server Error", "message": str(e)}), 500
+
 @app.route('/api/health', methods=['GET'])
 def health():
-    return jsonify({"status": "healthy", "timestamp": datetime.datetime.now().isoformat()})
+    return jsonify({"status": "healthy", "timestamp": datetime.datetime.now().isoformat(), "mode": "bolt ⚡"})
 
-def estimate_features(t):
-    low_t = t.lower()
+@app.route('/api/prompts/bulk', methods=['POST'])
+def bulk_process():
+    """Bolt ⚡ high-performance batch processing"""
+    data = request.json
+    prompts_data = data.get('prompts', [])
+    results = []
 
-    # P (Persona)
-    p_score = 0.4
-    if "you are" in low_t or "expert" in low_t or "persona" in low_t:
-        p_score = 0.8
-        if "years of experience" in low_t or "senior" in low_t or "specialist" in low_t:
-            p_score = 0.95
+    for item in prompts_data:
+        text = item.get('text', '')
+        features = estimate_features(text)
+        Q_score, _ = compute_Q(features)
+        results.append({
+            "text": text,
+            "Q_score": Q_score,
+            "features": features
+        })
 
-    # T (Tone)
-    t_score = 0.5
-    tone_keywords = ["formal", "casual", "professional", "technical", "academic", "persuasive", "friendly", "neutral"]
-    if any(tk in low_t for tk in tone_keywords):
-        t_score = 0.85
-    if "tone" in low_t or "voice" in low_t:
-        t_score = 0.95
-
-    # F (Format)
-    f_score = 0.3
-    format_keywords = ["json", "markdown", "table", "csv", "bullet points", "list", "xml", "latex", "structure"]
-    if any(fk in low_t for fk in format_keywords):
-        f_score = 0.7
-    if "format" in low_t or "output" in low_t or "sections" in low_t or "schema" in low_t:
-        f_score = 0.95
-
-    # S (Specificity)
-    s_score = 0.4
-    if any(c.isdigit() for c in low_t):
-        s_score = 0.7
-    metrics = ["latency", "throughput", "availability", "budget", "count", "words", "characters", "limit"]
-    if any(m in low_t for m in metrics):
-        s_score = 0.9
-
-    # C (Constraints)
-    c_score = 0.3
-    constraint_keywords = ["must", "cannot", "don't", "avoid", "ensure", "always", "never", "constraint", "limit"]
-    if any(ck in low_t for ck in constraint_keywords):
-        c_score = 0.8
-    if "validation" in low_t or "rules" in low_t or "enforce" in low_t:
-        c_score = 0.95
-
-    # R (Context)
-    r_score = 0.3
-    if len(t) > 200:
-        r_score = 0.6
-    if len(t) > 500:
-        r_score = 0.8
-    context_keywords = ["background", "audience", "context", "history", "use case", "scenario"]
-    if any(rk in low_t for rk in context_keywords):
-        r_score = 0.95
-
-    return {'P': p_score, 'T': t_score, 'F': f_score, 'S': s_score, 'C': c_score, 'R': r_score}
+    return jsonify({"processed": len(results), "results": results}), 200
 
 @app.route('/api/prompts', methods=['POST'])
 def create_prompt():
     data = request.json
     text = data.get('text', '')
     tags = data.get('tags', [])
+    parent_id = data.get('parent_id')
 
     features = estimate_features(text)
     Q_score, _ = compute_Q(features)
 
+    version = 1
+    if parent_id:
+        parent = PromptModel.query.get(parent_id)
+        if parent:
+            # Find the latest version in this lineage
+            latest = PromptModel.query.filter_by(parent_id=parent_id).order_by(PromptModel.version.desc()).first()
+            version = (latest.version if latest else parent.version) + 1
+
     prompt = PromptModel(
         text=text,
-        q_score=Q_score
+        q_score=Q_score,
+        version=version,
+        parent_id=parent_id
     )
     prompt.tags = tags
     prompt.features = features
@@ -131,6 +123,23 @@ def create_prompt():
     db.session.commit()
 
     return jsonify(prompt.to_dict()), 201
+
+@app.route('/api/prompts/export', methods=['GET'])
+def export_prompts():
+    fmt = request.args.get('format', 'json')
+    prompts = PromptModel.query.all()
+
+    if fmt == 'csv':
+        import io
+        import csv
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['id', 'version', 'Q_score', 'text', 'tags'])
+        for p in prompts:
+            writer.writerow([p.id, p.version, p.q_score, p.text, ','.join(p.tags)])
+        return output.getvalue(), 200, {'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename=prompts.csv'}
+
+    return jsonify([p.to_dict() for p in prompts])
 
 @app.route('/api/prompts', methods=['GET'])
 def list_prompts():
@@ -173,13 +182,23 @@ def generate_variants(id):
     if not prompt:
         return jsonify({"error": "Prompt not found"}), 404
 
-    # Mock variant generation
-    variants = [
-        {"type": "concise", "text": f"Concise: {prompt.text[:50]}...", "Q_score": 0.75},
-        {"type": "neutral", "text": f"Neutral: {prompt.text}", "Q_score": 0.82},
-        {"type": "commanding", "text": f"Commanding: DO {prompt.text}", "Q_score": 0.88}
-    ]
-    return jsonify({"variants": variants, "comparison": {"winner": "commanding"}}), 201
+    variant_texts = generate_variants_logic(prompt.text)
+    variants = []
+
+    for v in variant_texts:
+        features = estimate_features(v['text'])
+        q, _ = compute_Q(features)
+        variants.append({
+            "type": v['type'],
+            "text": v['text'],
+            "Q_score": q,
+            "features": features
+        })
+
+    # Determine winner based on Q_score
+    winner = max(variants, key=lambda x: x['Q_score'])['type']
+
+    return jsonify({"variants": variants, "comparison": {"winner": winner}}), 201
 
 @app.route('/api/analytics', methods=['GET'])
 def get_analytics():
