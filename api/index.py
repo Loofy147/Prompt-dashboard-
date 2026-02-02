@@ -1,3 +1,7 @@
-from .app import app
+import os
+import sys
 
-# This file is for Vercel's Python runtime
+# Add the current directory to sys.path so we can import app
+sys.path.append(os.path.dirname(__file__))
+
+from app import app
