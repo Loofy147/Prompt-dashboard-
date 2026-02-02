@@ -53,7 +53,7 @@ class PromptModel(db.Model):
 with app.app_context():
     db.create_all()
 
-@app.route('/health', methods=['GET'])
+@app.route('/api/health', methods=['GET'])
 def health():
     return jsonify({"status": "healthy", "timestamp": datetime.datetime.now().isoformat()})
 
