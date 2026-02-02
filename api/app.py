@@ -3,6 +3,7 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from quality_calculator import compute_Q, suggest_improvements, get_quality_level
 from feature_analyzer import estimate_features
+from variant_generator import generate_variants_logic
 import datetime
 import json
 import os
@@ -28,6 +29,8 @@ class PromptModel(db.Model):
     tags_json = db.Column(db.Text, default='[]')
     q_score = db.Column(db.Float, nullable=False)
     features_json = db.Column(db.Text, nullable=False)
+    version = db.Column(db.Integer, default=1)
+    parent_id = db.Column(db.Integer, db.ForeignKey('prompt_model.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
     @property
@@ -53,6 +56,8 @@ class PromptModel(db.Model):
             "tags": self.tags,
             "Q_score": self.q_score,
             "features": self.features,
+            "version": self.version,
+            "parent_id": self.parent_id,
             "created_at": self.created_at.isoformat()
         }
 
@@ -92,13 +97,24 @@ def create_prompt():
     data = request.json
     text = data.get('text', '')
     tags = data.get('tags', [])
+    parent_id = data.get('parent_id')
 
     features = estimate_features(text)
     Q_score, _ = compute_Q(features)
 
+    version = 1
+    if parent_id:
+        parent = PromptModel.query.get(parent_id)
+        if parent:
+            # Find the latest version in this lineage
+            latest = PromptModel.query.filter_by(parent_id=parent_id).order_by(PromptModel.version.desc()).first()
+            version = (latest.version if latest else parent.version) + 1
+
     prompt = PromptModel(
         text=text,
-        q_score=Q_score
+        q_score=Q_score,
+        version=version,
+        parent_id=parent_id
     )
     prompt.tags = tags
     prompt.features = features
@@ -107,6 +123,23 @@ def create_prompt():
     db.session.commit()
 
     return jsonify(prompt.to_dict()), 201
+
+@app.route('/api/prompts/export', methods=['GET'])
+def export_prompts():
+    fmt = request.args.get('format', 'json')
+    prompts = PromptModel.query.all()
+
+    if fmt == 'csv':
+        import io
+        import csv
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['id', 'version', 'Q_score', 'text', 'tags'])
+        for p in prompts:
+            writer.writerow([p.id, p.version, p.q_score, p.text, ','.join(p.tags)])
+        return output.getvalue(), 200, {'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename=prompts.csv'}
+
+    return jsonify([p.to_dict() for p in prompts])
 
 @app.route('/api/prompts', methods=['GET'])
 def list_prompts():
@@ -149,13 +182,23 @@ def generate_variants(id):
     if not prompt:
         return jsonify({"error": "Prompt not found"}), 404
 
-    # Mock variant generation
-    variants = [
-        {"type": "concise", "text": f"Concise: {prompt.text[:50]}...", "Q_score": 0.75},
-        {"type": "neutral", "text": f"Neutral: {prompt.text}", "Q_score": 0.82},
-        {"type": "commanding", "text": f"Commanding: DO {prompt.text}", "Q_score": 0.88}
-    ]
-    return jsonify({"variants": variants, "comparison": {"winner": "commanding"}}), 201
+    variant_texts = generate_variants_logic(prompt.text)
+    variants = []
+
+    for v in variant_texts:
+        features = estimate_features(v['text'])
+        q, _ = compute_Q(features)
+        variants.append({
+            "type": v['type'],
+            "text": v['text'],
+            "Q_score": q,
+            "features": features
+        })
+
+    # Determine winner based on Q_score
+    winner = max(variants, key=lambda x: x['Q_score'])['type']
+
+    return jsonify({"variants": variants, "comparison": {"winner": winner}}), 201
 
 @app.route('/api/analytics', methods=['GET'])
 def get_analytics():

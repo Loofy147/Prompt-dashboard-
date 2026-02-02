@@ -6,6 +6,7 @@ import { Zap, Sparkles, Save, XCircle } from 'lucide-react';
 interface PromptEditorProps {
   initialText?: string;
   initialTags?: string[];
+  parentId?: number;
   onSave?: (data: { text: string; tags: string[] }) => void;
   onCancel?: () => void;
 }
@@ -22,6 +23,7 @@ interface QualityScores {
 const PromptEditor: React.FC<PromptEditorProps> = ({
   initialText = '',
   initialTags = [],
+  parentId,
   onSave,
   onCancel
 }) => {
@@ -111,10 +113,26 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
   };
 
   // Save handler
-  const handleSave = () => {
-    if (onSave) {
-      onSave({ text, tags });
-      setLastSaved(new Date());
+  const handleSave = async () => {
+    try {
+      const response = await fetch('/api/prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          tags,
+          parent_id: parentId
+        })
+      });
+
+      if (response.ok) {
+        if (onSave) {
+          onSave({ text, tags });
+        }
+        setLastSaved(new Date());
+      }
+    } catch (error) {
+      console.error('Failed to save prompt:', error);
     }
   };
 
@@ -199,7 +217,7 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
             disabled={!text.trim()}
             className="flex items-center gap-2 px-6 py-2.5 bg-palette-primary text-white rounded-xl hover:bg-palette-primary/90 disabled:bg-gray-300 disabled:cursor-not-allowed font-bold shadow-lg shadow-palette-primary/20 transition-all active:scale-95"
           >
-            <Save size={18} /> Save Prompt
+            <Save size={18} /> {parentId ? 'SAVE VERSION' : 'SAVE PROMPT'}
           </button>
           <button
             onClick={handleRefine}
