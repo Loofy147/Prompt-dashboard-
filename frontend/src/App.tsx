@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Zap, Palette, Layers, ShieldCheck } from 'lucide-react';
 import PromptEditor from './components/PromptEditor';
 
 interface Prompt {
@@ -64,27 +65,34 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-indigo-700 text-white p-4 shadow-md">
+    <div className="min-h-screen bg-palette-light font-sans">
+      <nav className="bg-palette-dark text-white p-4 shadow-xl border-b border-palette-primary/20">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-indigo-700 font-bold">P</span>
+          <div className="flex items-center gap-3 group">
+            <div className="w-10 h-10 bg-gradient-to-br from-palette-primary to-palette-secondary rounded-xl flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+              <Zap className="text-white w-6 h-6 fill-current text-bolt-light" />
             </div>
-            <h1 className="text-xl font-bold tracking-tight">Prompt Dashboard</h1>
+            <div>
+              <h1 className="text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+                PROMPT <span className="text-palette-primary">ARCHITECT</span>
+              </h1>
+              <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-gray-500 font-bold">
+                <ShieldCheck size={10} className="text-accent" /> ROBUST ENGINE | <Zap size={10} className="text-bolt" /> BOLT v2.0
+              </div>
+            </div>
           </div>
-          <div className="flex gap-1 bg-indigo-800 p-1 rounded-lg">
+          <div className="flex gap-2 bg-gray-900/50 p-1 rounded-xl border border-white/5">
             <button
               onClick={() => setView('library')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${view === 'library' ? 'bg-indigo-600 shadow-sm' : 'hover:bg-indigo-700/50'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${view === 'library' ? 'bg-palette-primary text-white shadow-lg shadow-palette-primary/30' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
             >
-              Library
+              <Layers size={16} /> Library
             </button>
             <button
               onClick={() => setView('editor')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${view === 'editor' ? 'bg-indigo-600 shadow-sm' : 'hover:bg-indigo-700/50'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${view === 'editor' ? 'bg-palette-primary text-white shadow-lg shadow-palette-primary/30' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
             >
-              Editor
+              <Palette size={16} /> Designer
             </button>
           </div>
         </div>
