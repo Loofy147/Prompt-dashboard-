@@ -28,7 +28,7 @@ This document contains 3 newly designed prompts optimized using the PES framewor
 >
 > **CONTEXT**: This project is a production-grade prompt management system. Efficiency in the `feature_analyzer` is critical as it runs on every prompt save (target <100ms).
 
----
+-
 
 ## 2. UX Enhancement Prompt
 **Q Score: 0.92** (P=0.94, T=0.90, F=0.92, S=0.93, C=0.90, R=0.88)
@@ -54,7 +54,7 @@ This document contains 3 newly designed prompts optimized using the PES framewor
 >
 > **CONTEXT**: The target users are prompt engineers who iterate 50+ times per hour. Speed and visual feedback on the PES metrics are the highest priorities.
 
----
+-
 
 ## 3. Database Strategy Prompt
 **Q Score: 0.95** (P=0.96, T=0.94, F=0.97, S=0.96, C=0.93, R=0.90)
