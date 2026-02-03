@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Zap, Palette, Layers, ShieldCheck, Download, History, LayoutDashboard } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Zap, Palette, Layers, ShieldCheck, Download, History, LayoutDashboard, Search } from 'lucide-react';
 import PromptEditor from './components/PromptEditor';
 import ResearchDashboard from './components/ResearchDashboard';
 
@@ -57,6 +57,7 @@ const App: React.FC = () => {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleEdit = useCallback((p: Prompt) => {
     setEditingPrompt(p);
@@ -67,18 +68,24 @@ const App: React.FC = () => {
   const [isFetchingMore, setIsFetchingMore] = useState(false);
 
   useEffect(() => {
-    if (view === 'library') {
-      setPage(1);
-      fetchPrompts(1, false);
-    }
-  }, [view]);
+    const timer = setTimeout(() => {
+      if (view === 'library') {
+        setPage(1);
+        fetchPrompts(1, false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, view]);
 
   const fetchPrompts = async (pageNum = 1, append = false) => {
     if (pageNum === 1 && !append) setLoading(true);
     else setIsFetchingMore(true);
 
     try {
-      const response = await fetch(`/api/prompts?page=${pageNum}&per_page=12`);
+      const endpoint = searchQuery
+        ? `/api/prompts/search?q=${encodeURIComponent(searchQuery)}&page=${pageNum}&per_page=12`
+        : `/api/prompts?page=${pageNum}&per_page=12`;
+      const response = await fetch(endpoint);
       const data = await response.json();
 
       if (append) {
@@ -172,7 +179,16 @@ const App: React.FC = () => {
         ) : (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-              <div>
+              <div className="relative w-full md:w-96 group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-palette-primary transition-colors" size={18} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search computational directives..."
+                  className="w-full pl-12 pr-4 py-3 bg-white border border-gray-100 rounded-2xl shadow-sm focus:ring-4 focus:ring-palette-primary/5 focus:border-palette-primary outline-none transition-all font-medium text-sm"
+                />
+              </div>              <div>
                 <h2 className="text-3xl font-black text-palette-dark tracking-tighter uppercase">ARCHIVE</h2>
                 <p className="text-gray-400 font-medium mt-1">History of computational directives.</p>
               </div>

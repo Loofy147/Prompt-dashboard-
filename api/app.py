@@ -162,6 +162,39 @@ def export_prompts():
 
     return jsonify([p.to_dict() for p in prompts])
 
+@app.route('/api/prompts/search', methods=['GET'])
+def search_prompts():
+    """Bolt ⚡: High-performance search with indexed lookups"""
+    query = request.args.get('q', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    sort_by = request.args.get('sort_by', 'created_at')
+
+    base_query = PromptModel.query
+
+    if query:
+        # Search in text and tags_json
+        base_query = base_query.filter(
+            (PromptModel.text.ilike(f'%{query}%')) |
+            (PromptModel.tags_json.ilike(f'%{query}%'))
+        )
+
+    if sort_by == 'q_score':
+        base_query = base_query.order_by(PromptModel.q_score.desc())
+    else:
+        base_query = base_query.order_by(PromptModel.created_at.desc())
+
+    pagination = base_query.paginate(page=page, per_page=per_page, error_out=False)
+
+    return jsonify({
+        "prompts": [p.to_dict() for p in pagination.items],
+        "total": pagination.total,
+        "page": page,
+        "per_page": per_page,
+        "pages": pagination.pages,
+        "query": query
+    })
+
 @app.route('/api/prompts', methods=['GET'])
 def list_prompts():
     """Bolt ⚡: High-performance paginated listing"""
