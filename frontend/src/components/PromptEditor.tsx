@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { debounce } from 'lodash';
 import QualityCalculator from './QualityCalculator';
+import OptimizationPanel from './OptimizationPanel';
 import { Zap, Sparkles, Save, XCircle } from 'lucide-react';
 
 interface PromptEditorProps {
@@ -38,6 +39,7 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
     actionable_instruction: string;
   } | null>(null);
   const [isRefining, setIsRefining] = useState(false);
+  const [showActiveOptimizer, setShowActiveOptimizer] = useState(false);
 
   // Debounced quality analysis when text changes
   const analyzeQuality = useCallback(
@@ -148,8 +150,13 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [text, tags]);
 
+  const WEIGHTS = { P: 0.18, T: 0.22, F: 0.20, S: 0.18, C: 0.12, R: 0.10 };
+  const currentQ = qualityScores ? Object.entries(qualityScores).reduce((acc, [key, val]) => {
+    return acc + (val * (WEIGHTS[key as keyof typeof WEIGHTS] || 0));
+  }, 0) : 0;
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full relative">
       {/* Left: Editor */}
       <div className="lg:col-span-2 flex flex-col">
         <div className="mb-2 flex justify-between items-center">
@@ -174,7 +181,7 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
           onChange={(e) => setText(e.target.value)}
           placeholder="Enter your prompt here..."
           maxLength={maxChars}
-          className="flex-1 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm resize-none"
+          className="flex-1 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm resize-none min-h-[300px]"
           aria-label="Prompt text editor"
         />
 
@@ -211,7 +218,7 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 mt-6">
+        <div className="flex flex-wrap gap-3 mt-6">
           <button
             onClick={handleSave}
             disabled={!text.trim()}
@@ -220,15 +227,22 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
             <Save size={18} /> {parentId ? 'SAVE VERSION' : 'SAVE PROMPT'}
           </button>
           <button
+            onClick={() => setShowActiveOptimizer(true)}
+            disabled={!text.trim()}
+            className="flex items-center gap-2 px-6 py-2.5 bg-palette-dark text-white rounded-xl hover:bg-palette-dark/90 disabled:opacity-50 font-bold shadow-lg shadow-palette-dark/20 transition-all active:scale-95 border border-white/10"
+          >
+            <Sparkles size={18} /> ACTIVE OPTIMIZE
+          </button>
+          <button
             onClick={handleRefine}
             disabled={!text.trim() || isRefining}
-            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-palette-secondary to-palette-primary text-white rounded-xl hover:opacity-90 disabled:opacity-50 font-bold shadow-lg shadow-palette-secondary/20 transition-all active:scale-95"
+            className="flex items-center gap-2 px-6 py-2.5 bg-white text-palette-primary border border-palette-primary/20 rounded-xl hover:bg-gray-50 disabled:opacity-50 font-bold transition-all active:scale-95"
           >
-            <Zap size={18} className={isRefining ? 'animate-pulse' : ''} /> {isRefining ? 'BOLT ANALYZING...' : 'BOLT OPTIMIZE'}
+            <Zap size={18} className={isRefining ? 'animate-pulse' : ''} /> {isRefining ? 'ANALYZING...' : 'BOLT TIP'}
           </button>
           <button
             onClick={onCancel}
-            className="flex items-center gap-2 px-6 py-2.5 bg-white text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 font-bold transition-all"
+            className="flex items-center gap-2 px-6 py-2.5 bg-white text-gray-400 border border-gray-100 rounded-xl hover:bg-gray-50 font-bold transition-all"
           >
             <XCircle size={18} /> Cancel
           </button>
@@ -263,6 +277,25 @@ const PromptEditor: React.FC<PromptEditorProps> = ({
           scores={qualityScores}
           isLoading={isAnalyzing}
         />
+
+        {/* Active Optimizer Modal Overlay */}
+        {showActiveOptimizer && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-palette-dark/60 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <OptimizationPanel
+                promptId={parentId || null}
+                promptText={text}
+                currentQ={currentQ}
+                onOptimized={(newText) => {
+                  setText(newText);
+                  // Optionally keep panel open to see results, or close it
+                  // setShowActiveOptimizer(false);
+                }}
+                onClose={() => setShowActiveOptimizer(false)}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

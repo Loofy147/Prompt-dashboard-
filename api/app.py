@@ -1,9 +1,17 @@
+from dataclasses import asdict
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from quality_calculator import compute_Q, suggest_improvements, get_quality_level
 from feature_analyzer import estimate_features
 from variant_generator import generate_variants_logic
+from prompt_optimizer import (
+    optimize_prompt,
+    estimate_optimization_cost,
+    generate_optimization_report,
+    OptimizationStrategy
+)
+from generate_response import generate_response, estimate_cost as estimate_llm_cost, compare_providers
 import datetime
 import json
 import os
@@ -72,6 +80,10 @@ def handle_exception(e):
 @app.route('/api/health', methods=['GET'])
 def health():
     return jsonify({"status": "healthy", "timestamp": datetime.datetime.now().isoformat(), "mode": "bolt ⚡"})
+
+# ============================================================================
+# PROMPT MANAGEMENT ENDPOINTS
+# ============================================================================
 
 @app.route('/api/prompts/bulk', methods=['POST'])
 def bulk_process():
@@ -159,6 +171,10 @@ def get_prompt(id):
         return jsonify(prompt.to_dict())
     return jsonify({"error": "Prompt not found"}), 404
 
+# ============================================================================
+# ANALYSIS ENDPOINTS
+# ============================================================================
+
 @app.route('/api/prompts/<int:id>/analyze', methods=['POST'])
 def analyze_prompt_by_id(id):
     prompt = PromptModel.query.get(id)
@@ -174,48 +190,6 @@ def analyze_prompt_by_id(id):
         "breakdown": breakdown,
         "level": get_quality_level(Q_score),
         "suggestions": suggest_improvements(features)
-    })
-
-@app.route('/api/prompts/<int:id>/variants', methods=['POST'])
-def generate_variants(id):
-    prompt = PromptModel.query.get(id)
-    if not prompt:
-        return jsonify({"error": "Prompt not found"}), 404
-
-    variant_texts = generate_variants_logic(prompt.text)
-    variants = []
-
-    for v in variant_texts:
-        features = estimate_features(v['text'])
-        q, _ = compute_Q(features)
-        variants.append({
-            "type": v['type'],
-            "text": v['text'],
-            "Q_score": q,
-            "features": features
-        })
-
-    # Determine winner based on Q_score
-    winner = max(variants, key=lambda x: x['Q_score'])['type']
-
-    return jsonify({"variants": variants, "comparison": {"winner": winner}}), 201
-
-@app.route('/api/analytics', methods=['GET'])
-def get_analytics():
-    prompts = PromptModel.query.all()
-    if not prompts:
-        return jsonify({"avg_q": 0, "count": 0})
-
-    avg_q = sum(p.q_score for p in prompts) / len(prompts)
-    return jsonify({
-        "avg_q": round(avg_q, 4),
-        "count": len(prompts),
-        "distribution": {
-            "Excellent": len([p for p in prompts if p.q_score >= 0.9]),
-            "Good": len([p for p in prompts if 0.8 <= p.q_score < 0.9]),
-            "Fair": len([p for p in prompts if 0.7 <= p.q_score < 0.8]),
-            "Poor": len([p for p in prompts if p.q_score < 0.7])
-        }
     })
 
 @app.route('/api/analyze', methods=['POST'])
@@ -272,6 +246,300 @@ def refine_prompt_api():
         "weakest_score": score,
         "suggestion": suggestion,
         "actionable_instruction": f"To improve your prompt's {dim_names[dim_key]} score from {score:.2f}, {suggestion.lower()}"
+    })
+
+# ============================================================================
+# OPTIMIZATION ENDPOINTS
+# ============================================================================
+
+@app.route('/api/prompts/<int:id>/optimize', methods=['POST'])
+def optimize_saved_prompt(id):
+    prompt_obj = PromptModel.query.get(id)
+    if not prompt_obj:
+        return jsonify({"error": "Prompt not found"}), 404
+
+    data = request.json or {}
+    target_quality = data.get('target_quality', 0.85)
+    strategy = data.get('strategy', 'balanced')
+    estimate_only = data.get('estimate_only', False)
+
+    if not (0.0 <= target_quality <= 1.0):
+        return jsonify({"error": "target_quality must be between 0 and 1"}), 400
+
+    if strategy not in ['balanced', 'cost_efficient', 'max_quality']:
+        return jsonify({"error": "Invalid strategy"}), 400
+
+    try:
+        features = estimate_features(prompt_obj.text)
+        current_q, _ = compute_Q(features)
+
+        if estimate_only:
+            estimate = estimate_optimization_cost(
+                prompt=prompt_obj.text,
+                current_q=current_q,
+                target_q=target_quality,
+                strategy=strategy
+            )
+            return jsonify(asdict(estimate) if hasattr(estimate, 'to_dict') is False else estimate.to_dict()), 200
+
+        result = optimize_prompt(
+            prompt=prompt_obj.text,
+            target_quality=target_quality,
+            strategy=strategy
+        )
+
+        if data.get('save_as_new', False):
+            optimized = PromptModel(
+                text=result.optimized_prompt,
+                q_score=result.optimized_q,
+                parent_id=id,
+                version=prompt_obj.version + 1
+            )
+            optimized.tags = prompt_obj.tags + ['optimized']
+            optimized.features = result.iterations[-1].features
+
+            db.session.add(optimized)
+            db.session.commit()
+
+            return jsonify({
+                **result.to_dict(),
+                'saved_prompt_id': optimized.id
+            }), 201
+
+        return jsonify(result.to_dict()), 200
+
+    except Exception as e:
+        logger.error(f"Optimization failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/optimize', methods=['POST'])
+def optimize_ad_hoc():
+    data = request.json
+    prompt_text = data.get('text', '')
+    if not prompt_text:
+        return jsonify({"error": "Prompt text required"}), 400
+
+    target_quality = data.get('target_quality', 0.85)
+    strategy = data.get('strategy', 'balanced')
+
+    try:
+        result = optimize_prompt(
+            prompt=prompt_text,
+            target_quality=target_quality,
+            strategy=strategy
+        )
+        return jsonify(result.to_dict()), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/optimize/estimate', methods=['POST'])
+def estimate_optimization_endpoint():
+    data = request.json
+    prompt_text = data.get('text', '')
+    if not prompt_text:
+        return jsonify({"error": "Prompt text required"}), 400
+
+    target_quality = data.get('target_quality', 0.85)
+    strategy = data.get('strategy', 'balanced')
+
+    try:
+        features = estimate_features(prompt_text)
+        current_q, _ = compute_Q(features)
+        estimate = estimate_optimization_cost(
+            prompt=prompt_text,
+            current_q=current_q,
+            target_q=target_quality,
+            strategy=strategy
+        )
+        return jsonify(estimate.to_dict()), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/optimize/batch', methods=['POST'])
+def optimize_batch():
+    data = request.json
+    prompts_data = data.get('prompts', [])
+    strategy = data.get('strategy', 'balanced')
+
+    results = []
+    total_cost = 0
+    successful = 0
+    failed = 0
+
+    for item in prompts_data:
+        p_id = item.get('id')
+        target_q = item.get('target_quality', 0.85)
+
+        prompt_obj = PromptModel.query.get(p_id)
+        if not prompt_obj:
+            results.append({"prompt_id": p_id, "status": "failed", "error": "Not found"})
+            failed += 1
+            continue
+
+        try:
+            res = optimize_prompt(prompt_obj.text, target_quality=target_q, strategy=strategy)
+            results.append({"prompt_id": p_id, "status": "success", "result": res.to_dict()})
+            total_cost += res.total_cost_usd
+            successful += 1
+        except Exception as e:
+            results.append({"prompt_id": p_id, "status": "failed", "error": str(e)})
+            failed += 1
+
+    return jsonify({
+        "results": results,
+        "total_cost": total_cost,
+        "successful": successful,
+        "failed": failed
+    }), 200
+
+# ============================================================================
+# LLM GENERATION ENDPOINTS
+# ============================================================================
+
+@app.route('/api/prompts/<int:id>/generate', methods=['POST'])
+def generate_for_prompt(id):
+    prompt_obj = PromptModel.query.get(id)
+    if not prompt_obj:
+        return jsonify({"error": "Prompt not found"}), 404
+
+    data = request.json or {}
+    provider = data.get('provider', 'claude')
+    temperature = data.get('temperature', 0.7)
+    max_tokens = data.get('max_tokens', 2048)
+
+    try:
+        response = generate_response(
+            prompt=prompt_obj.text,
+            provider=provider,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            analyze_quality=True
+        )
+
+        return jsonify({
+            "text": response.text,
+            "provider": response.provider,
+            "model": response.model,
+            "tokens": {
+                "input": response.prompt_tokens,
+                "output": response.completion_tokens,
+                "total": response.total_tokens
+            },
+            "cost_usd": response.total_cost_usd,
+            "latency_ms": response.latency_ms,
+            "quality": {
+                "features": response.quality_features,
+                "score": response.quality_score,
+                "level": response.quality_level
+            },
+            "timestamp": response.timestamp.isoformat()
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Generation failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/generate', methods=['POST'])
+def generate_live():
+    data = request.json
+    prompt = data.get('text', '')
+    if not prompt:
+        return jsonify({"error": "Prompt text required"}), 400
+
+    provider = data.get('provider', 'claude')
+    temperature = data.get('temperature', 0.7)
+    max_tokens = data.get('max_tokens', 2048)
+
+    try:
+        response = generate_response(
+            prompt=prompt,
+            provider=provider,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            analyze_quality=True
+        )
+        return jsonify(response.to_dict()), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/generate/estimate', methods=['POST'])
+def estimate_generation_cost_endpoint():
+    data = request.json
+    prompt = data.get('text', '')
+    provider = data.get('provider', 'claude')
+    max_tokens = data.get('max_tokens', 2048)
+
+    try:
+        cost_data = estimate_llm_cost(
+            prompt=prompt,
+            provider=provider,
+            max_tokens=max_tokens
+        )
+        return jsonify(cost_data), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/generate/compare', methods=['POST'])
+def compare_llm_providers_endpoint():
+    data = request.json
+    prompt = data.get('text', '')
+    providers = data.get('providers', ['claude', 'openai'])
+
+    try:
+        results = compare_providers(
+            prompt=prompt,
+            providers=providers
+        )
+        output = {}
+        for provider, response in results.items():
+            if response:
+                output[provider] = response.to_dict()
+            else:
+                output[provider] = {"error": "Generation failed"}
+        return jsonify(output), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/prompts/<int:id>/variants', methods=['POST'])
+def generate_variants(id):
+    prompt = PromptModel.query.get(id)
+    if not prompt:
+        return jsonify({"error": "Prompt not found"}), 404
+
+    variant_texts = generate_variants_logic(prompt.text)
+    variants = []
+
+    for v in variant_texts:
+        features = estimate_features(v['text'])
+        q, _ = compute_Q(features)
+        variants.append({
+            "type": v['type'],
+            "text": v['text'],
+            "Q_score": q,
+            "features": features
+        })
+
+    # Determine winner based on Q_score
+    winner = max(variants, key=lambda x: x['Q_score'])['type']
+
+    return jsonify({"variants": variants, "comparison": {"winner": winner}}), 201
+
+@app.route('/api/analytics', methods=['GET'])
+def get_analytics():
+    prompts = PromptModel.query.all()
+    if not prompts:
+        return jsonify({"avg_q": 0, "count": 0})
+
+    avg_q = sum(p.q_score for p in prompts) / len(prompts)
+    return jsonify({
+        "avg_q": round(avg_q, 4),
+        "count": len(prompts),
+        "distribution": {
+            "Excellent": len([p for p in prompts if p.q_score >= 0.9]),
+            "Good": len([p for p in prompts if 0.8 <= p.q_score < 0.9]),
+            "Fair": len([p for p in prompts if 0.7 <= p.q_score < 0.8]),
+            "Poor": len([p for p in prompts if p.q_score < 0.7])
+        }
     })
 
 if __name__ == '__main__':
