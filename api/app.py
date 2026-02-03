@@ -1,4 +1,4 @@
-from sqlalchemy import func
+from sqlalchemy import func, case
 from dataclasses import asdict
 from flask import Flask, request, jsonify, abort
 from flask_cors import CORS
@@ -164,13 +164,20 @@ def export_prompts():
 
 @app.route('/api/prompts', methods=['GET'])
 def list_prompts():
-    prompts = PromptModel.query.order_by(PromptModel.created_at.desc()).all()
+    """Bolt ⚡: High-performance paginated listing"""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+
+    pagination = PromptModel.query.order_by(PromptModel.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
     return jsonify({
-        "prompts": [p.to_dict() for p in prompts],
-        "total": len(prompts),
-        "page": 1,
-        "per_page": 20,
-        "pages": 1
+        "prompts": [p.to_dict() for p in pagination.items],
+        "total": pagination.total,
+        "page": page,
+        "per_page": per_page,
+        "pages": pagination.pages
     })
 
 @app.route('/api/prompts/<int:id>', methods=['GET'])
@@ -525,10 +532,14 @@ def generate_variants(id):
 
 @app.route('/api/analytics', methods=['GET'])
 def get_analytics():
-    """Bolt ⚡: Optimized analytics using DB-level aggregation"""
+    """Bolt ⚡: Optimized analytics using single-pass DB aggregation"""
     stats = db.session.query(
         func.avg(PromptModel.q_score),
-        func.count(PromptModel.id)
+        func.count(PromptModel.id),
+        func.sum(case((PromptModel.q_score >= 0.9, 1), else_=0)),
+        func.sum(case(((PromptModel.q_score >= 0.8) & (PromptModel.q_score < 0.9), 1), else_=0)),
+        func.sum(case(((PromptModel.q_score >= 0.7) & (PromptModel.q_score < 0.8), 1), else_=0)),
+        func.sum(case((PromptModel.q_score < 0.7, 1), else_=0))
     ).first()
 
     avg_q = stats[0] or 0
@@ -537,17 +548,15 @@ def get_analytics():
     if count == 0:
         return jsonify({"avg_q": 0, "count": 0})
 
-    distribution = {
-        "Excellent": PromptModel.query.filter(PromptModel.q_score >= 0.9).count(),
-        "Good": PromptModel.query.filter(PromptModel.q_score >= 0.8, PromptModel.q_score < 0.9).count(),
-        "Fair": PromptModel.query.filter(PromptModel.q_score >= 0.7, PromptModel.q_score < 0.8).count(),
-        "Poor": PromptModel.query.filter(PromptModel.q_score < 0.7).count()
-    }
-
     return jsonify({
         "avg_q": round(avg_q, 4),
         "count": count,
-        "distribution": distribution
+        "distribution": {
+            "Excellent": int(stats[2] or 0),
+            "Good": int(stats[3] or 0),
+            "Fair": int(stats[4] or 0),
+            "Poor": int(stats[5] or 0)
+        }
     })
 
 if __name__ == '__main__':

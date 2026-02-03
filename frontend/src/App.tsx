@@ -56,23 +56,38 @@ const App: React.FC = () => {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
 
   useEffect(() => {
     if (view === 'library') {
-      fetchPrompts();
+      setPage(1);
+      fetchPrompts(1, false);
     }
   }, [view]);
 
-  const fetchPrompts = async () => {
-    setLoading(true);
+  const fetchPrompts = async (pageNum = 1, append = false) => {
+    if (pageNum === 1 && !append) setLoading(true);
+    else setIsFetchingMore(true);
+
     try {
-      const response = await fetch('/api/prompts');
+      const response = await fetch(`/api/prompts?page=${pageNum}&per_page=12`);
       const data = await response.json();
-      setPrompts(data.prompts);
+
+      if (append) {
+        setPrompts(prev => [...prev, ...data.prompts]);
+      } else {
+        setPrompts(data.prompts);
+      }
+
+      setHasMore(data.page < data.pages);
+      setPage(data.page);
     } catch (error) {
       console.error('Failed to fetch prompts:', error);
     } finally {
       setLoading(false);
+      setIsFetchingMore(false);
     }
   };
 
@@ -190,17 +205,35 @@ const App: React.FC = () => {
                 ))}
               </div>
             ) : prompts.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {prompts.map(prompt => (
-                  <PromptCard
-                    key={prompt.id}
-                    prompt={prompt}
-                    onEdit={(p) => {
-                      setEditingPrompt(p);
-                      setView('editor');
-                    }}
-                  />
-                ))}
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {prompts.map(prompt => (
+                    <PromptCard
+                      key={prompt.id}
+                      prompt={prompt}
+                      onEdit={(p) => {
+                        setEditingPrompt(p);
+                        setView('editor');
+                      }}
+                    />
+                  ))}
+                </div>
+                {hasMore && (
+                  <div className="flex justify-center pb-8">
+                    <button
+                      onClick={() => fetchPrompts(page + 1, true)}
+                      disabled={isFetchingMore}
+                      className="px-10 py-4 bg-white border-2 border-palette-primary text-palette-primary rounded-2xl hover:bg-palette-primary hover:text-white transition-all font-black uppercase text-xs tracking-widest shadow-xl shadow-palette-primary/10 disabled:opacity-50 flex items-center gap-3"
+                    >
+                      {isFetchingMore ? (
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Zap size={16} />
+                      )}
+                      {isFetchingMore ? 'FETCHING...' : 'LOAD MORE DIRECTIVES'}
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">

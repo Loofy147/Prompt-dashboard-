@@ -1,3 +1,4 @@
+import re
 """
 NLP-based feature extraction for prompts.
 Optimized with type hints and efficient keyword matching.
@@ -45,7 +46,7 @@ def estimate_features(t: str) -> Dict[str, float]:
 
     # S (Specificity) - Weight: 0.18
     s_score = 0.4
-    if any(c.isdigit() for c in low_t):
+    if re.search(r'\d', low_t):
         s_score = 0.7
     metrics = ["latency", "throughput", "availability", "budget", "count", "words", "characters", "limit", "target", "metric"]
     if any(m in low_t for m in metrics):
