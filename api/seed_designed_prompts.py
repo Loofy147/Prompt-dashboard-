@@ -7,6 +7,25 @@ API_URL = os.environ.get("API_URL", "http://localhost:5000/api")
 
 prompts = [
     {
+        "text": "IDENTITY: You are a Principal UX/UI Dashboard Designer with 15+ years of experience specializing in Research Operations (ResOps) and large-scale data visualization for enterprise UX teams.
+MISSION: Design a high-fidelity dashboard interface for a multi-month UX research project that tracked 1,000+ users across a global SaaS platform. The dashboard must bridge the gap between qualitative insights (interviews, usability videos) and quantitative metrics (conversion rates, task success, SUS scores).
+TASK: Generate a comprehensive UI Design Specification that includes:
+1. NAVIGATION STRATEGY: Define the sidebar and top-bar hierarchy for drilling down from high-level "Executive Trends" to "Individual Participant Journeys".
+2. CORE WIDGETS: Describe 4 innovative data visualizations that combine 'Sentiment Analysis' with 'Task Efficiency'.
+3. INTERACTIVE PROTOCOL: Explain how a researcher can filter the entire dashboard by specific qualitative tags (e.g., "Confusion", "Feature Request") and see the real-time impact on the System Usability Scale (SUS) score.
+4. TAILWIND THEME: Provide a specific color palette using Tailwind CSS classes from the 'Palette' system (e.g., bg-bolt-500 for primary actions, text-palette-indigo-900 for headers).
+FORMAT:
+- Use structured Markdown with clear H2 and H3 sections.
+- Deliverable must include a "Design-to-Data" table mapping UI elements to backend database fields.
+- Include a 5-step "User Flow" description for a Research Manager looking for a specific insight.
+CONSTRAINTS:
+- Design must be responsive (Mobile/Tablet/Desktop) and WCAG 2.1 AAA compliant.
+- Output must be between 600 and 800 words.
+- If a data requirement is ambiguous, mark it as [UNKNOWN_REQUIREMENT] and list the necessary field.
+CONTEXT: The target audience is the Product Leadership team of a Fortune 100 Fintech company. The goal is to justify a $2M budget increase for UX improvements based on the evidence presented in this dashboard.",
+        "tags": ["ux", "research", "dashboard"]
+    },
+    {
         "text": "IDENTITY: You are a Senior Python Engineer with 10+ years of experience specializing in Flask microservices and NLP pipelines.\nMISSION: Perform a comprehensive code maintenance review of the `api/` directory in the Prompt Dashboard Manager project. Use a professional, technical tone.\nTASK: Analyze `api/app.py` and `api/feature_analyzer.py` for:\n1. PEP 8 compliance and code style consistency.\n2. Proper use of Python 3.11+ type hints.\n3. Performance bottlenecks in the NLP processing loop.\n4. Error handling robustness and logging coverage.\nDELIVERABLE (Markdown):\n- Summary Table: Dimension (Style/Types/Perf/Errors) vs. Rating (1-5).\n- Actionable Issues: List of specific lines with suggested refactors.\n- Refactored Snippets: Provide optimized versions of the most critical functions.\nCONSTRAINTS:\n- Suggestions must only use libraries found in `api/requirements.txt`.\n- Do not suggest architectural changes that require moving away from Flask/SQLAlchemy.\n- Ensure all refactors maintain backward compatibility with the existing REST API.\nCONTEXT: This project is a production-grade prompt management system. Efficiency in the `feature_analyzer` is critical as it runs on every prompt save (target <100ms).",
         "tags": ["maintenance", "technical", "backend"]
     },
