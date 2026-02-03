@@ -14,3 +14,7 @@
 ## 2026-02-01 - [Fast String Scanning with Regex]
 **Learning:** Python's `any(c.isdigit() for c in s)` is much slower than `re.search(r'\d', s)` for large strings because the latter is implemented in C and stops at the first match more efficiently.
 **Action:** Use Regex for simple character set checks on large text inputs.
+
+## 2026-02-01 - [Optimized Membership Testing]
+**Learning:** In Python, `any(w in low_t for w in ("a", "b"))` with a tuple is slightly faster than a list or generator expression due to reduced allocation overhead. For very small sets, literal `or` chains are even faster, but `any()` with a tuple is the "state-of-the-art" balance for readability and performance.
+**Action:** Use `any()` with tuples for keyword set membership testing.

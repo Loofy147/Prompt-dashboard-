@@ -13,7 +13,8 @@ interface Prompt {
   created_at: string;
 }
 
-const PromptCard: React.FC<{ prompt: Prompt; onEdit: (p: Prompt) => void }> = ({ prompt, onEdit }) => {
+const PromptCard: React.FC<{ prompt: Prompt; onEdit: (p: Prompt) => void }> = React.memo(({ prompt, onEdit }) => {
+  console.log('⚡ Bolt: PromptCard Render:', prompt.id);
   const getLevelColor = (q: number) => {
     if (q >= 0.9) return 'bg-green-100 text-green-800 border-green-200';
     if (q >= 0.8) return 'bg-blue-100 text-blue-800 border-blue-200';
@@ -49,13 +50,18 @@ const PromptCard: React.FC<{ prompt: Prompt; onEdit: (p: Prompt) => void }> = ({
       </div>
     </div>
   );
-};
+});
 
 const App: React.FC = () => {
   const [view, setView] = useState<'library' | 'editor' | 'insights'>('editor');
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
+
+  const handleEdit = useCallback((p: Prompt) => {
+    setEditingPrompt(p);
+    setView('editor');
+  }, []);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -211,10 +217,7 @@ const App: React.FC = () => {
                     <PromptCard
                       key={prompt.id}
                       prompt={prompt}
-                      onEdit={(p) => {
-                        setEditingPrompt(p);
-                        setView('editor');
-                      }}
+                      onEdit={handleEdit}
                     />
                   ))}
                 </div>
@@ -255,6 +258,6 @@ const App: React.FC = () => {
       </main>
     </div>
   );
-};
+});
 
 export default App;
