@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from dataclasses import asdict
 from flask import Flask, request, jsonify, abort
 from flask_cors import CORS
@@ -35,11 +36,11 @@ class PromptModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text, nullable=False)
     tags_json = db.Column(db.Text, default='[]')
-    q_score = db.Column(db.Float, nullable=False)
+    q_score = db.Column(db.Float, nullable=False, index=True)
     features_json = db.Column(db.Text, nullable=False)
     version = db.Column(db.Integer, default=1)
-    parent_id = db.Column(db.Integer, db.ForeignKey('prompt_model.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    parent_id = db.Column(db.Integer, db.ForeignKey('prompt_model.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, index=True)
 
     @property
     def tags(self):
@@ -524,20 +525,29 @@ def generate_variants(id):
 
 @app.route('/api/analytics', methods=['GET'])
 def get_analytics():
-    prompts = PromptModel.query.all()
-    if not prompts:
+    """Bolt ⚡: Optimized analytics using DB-level aggregation"""
+    stats = db.session.query(
+        func.avg(PromptModel.q_score),
+        func.count(PromptModel.id)
+    ).first()
+
+    avg_q = stats[0] or 0
+    count = stats[1] or 0
+
+    if count == 0:
         return jsonify({"avg_q": 0, "count": 0})
 
-    avg_q = sum(p.q_score for p in prompts) / len(prompts)
+    distribution = {
+        "Excellent": PromptModel.query.filter(PromptModel.q_score >= 0.9).count(),
+        "Good": PromptModel.query.filter(PromptModel.q_score >= 0.8, PromptModel.q_score < 0.9).count(),
+        "Fair": PromptModel.query.filter(PromptModel.q_score >= 0.7, PromptModel.q_score < 0.8).count(),
+        "Poor": PromptModel.query.filter(PromptModel.q_score < 0.7).count()
+    }
+
     return jsonify({
         "avg_q": round(avg_q, 4),
-        "count": len(prompts),
-        "distribution": {
-            "Excellent": len([p for p in prompts if p.q_score >= 0.9]),
-            "Good": len([p for p in prompts if 0.8 <= p.q_score < 0.9]),
-            "Fair": len([p for p in prompts if 0.7 <= p.q_score < 0.8]),
-            "Poor": len([p for p in prompts if p.q_score < 0.7])
-        }
+        "count": count,
+        "distribution": distribution
     })
 
 if __name__ == '__main__':
