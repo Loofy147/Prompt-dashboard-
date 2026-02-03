@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Palette, Layers, ShieldCheck, Download, History } from 'lucide-react';
+import { Zap, Palette, Layers, ShieldCheck, Download, History, LayoutDashboard } from 'lucide-react';
 import PromptEditor from './components/PromptEditor';
+import ResearchDashboard from './components/ResearchDashboard';
 
 interface Prompt {
   id: number;
@@ -51,7 +52,7 @@ const PromptCard: React.FC<{ prompt: Prompt; onEdit: (p: Prompt) => void }> = ({
 };
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'library' | 'editor'>('editor');
+  const [view, setView] = useState<'library' | 'editor' | 'insights'>('editor');
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
@@ -110,12 +111,20 @@ const App: React.FC = () => {
             >
               <Palette size={16} /> Designer
             </button>
+            <button
+              onClick={() => setView('insights')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${view === 'insights' ? 'bg-palette-primary text-white shadow-lg shadow-palette-primary/30' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+            >
+              <LayoutDashboard size={16} /> Insights
+            </button>
           </div>
         </div>
       </nav>
 
       <main className="max-w-7xl mx-auto p-6">
-        {view === 'editor' ? (
+        {view === 'insights' ? (
+          <ResearchDashboard />
+        ) : view === 'editor' ? (
           <div className="bg-white p-8 rounded-3xl shadow-2xl shadow-palette-dark/5 border border-gray-100">
             <div className="mb-8">
               <h2 className="text-3xl font-black text-palette-dark tracking-tighter">
