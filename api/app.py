@@ -1,5 +1,5 @@
 from dataclasses import asdict
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, abort
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from quality_calculator import compute_Q, suggest_improvements, get_quality_level
@@ -85,6 +85,14 @@ def health():
 # PROMPT MANAGEMENT ENDPOINTS
 # ============================================================================
 
+
+def get_prompt_or_404(prompt_id: int) -> PromptModel:
+    """Utility to fetch a prompt or abort with 404."""
+    prompt = PromptModel.query.get(prompt_id)
+    if not prompt:
+        abort(404, description=f"Prompt {prompt_id} not found")
+    return prompt
+
 @app.route('/api/prompts/bulk', methods=['POST'])
 def bulk_process():
     """Bolt ⚡ high-performance batch processing"""
@@ -165,7 +173,7 @@ def list_prompts():
     })
 
 @app.route('/api/prompts/<int:id>', methods=['GET'])
-def get_prompt(id):
+def get_prompt(id: int):
     prompt = PromptModel.query.get(id)
     if prompt:
         return jsonify(prompt.to_dict())
@@ -176,11 +184,8 @@ def get_prompt(id):
 # ============================================================================
 
 @app.route('/api/prompts/<int:id>/analyze', methods=['POST'])
-def analyze_prompt_by_id(id):
-    prompt = PromptModel.query.get(id)
-    if not prompt:
-        return jsonify({"error": "Prompt not found"}), 404
-
+def analyze_prompt_by_id(id: int):
+    prompt = get_prompt_or_404(id)
     features = estimate_features(prompt.text)
     Q_score, breakdown = compute_Q(features)
 
@@ -254,9 +259,7 @@ def refine_prompt_api():
 
 @app.route('/api/prompts/<int:id>/optimize', methods=['POST'])
 def optimize_saved_prompt(id):
-    prompt_obj = PromptModel.query.get(id)
-    if not prompt_obj:
-        return jsonify({"error": "Prompt not found"}), 404
+    prompt_obj = get_prompt_or_404(id)
 
     data = request.json or {}
     target_quality = data.get('target_quality', 0.85)
@@ -398,9 +401,7 @@ def optimize_batch():
 
 @app.route('/api/prompts/<int:id>/generate', methods=['POST'])
 def generate_for_prompt(id):
-    prompt_obj = PromptModel.query.get(id)
-    if not prompt_obj:
-        return jsonify({"error": "Prompt not found"}), 404
+    prompt_obj = get_prompt_or_404(id)
 
     data = request.json or {}
     provider = data.get('provider', 'claude')
@@ -502,10 +503,7 @@ def compare_llm_providers_endpoint():
 
 @app.route('/api/prompts/<int:id>/variants', methods=['POST'])
 def generate_variants(id):
-    prompt = PromptModel.query.get(id)
-    if not prompt:
-        return jsonify({"error": "Prompt not found"}), 404
-
+    prompt = get_prompt_or_404(id)
     variant_texts = generate_variants_logic(prompt.text)
     variants = []
 
