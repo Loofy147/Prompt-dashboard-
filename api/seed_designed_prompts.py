@@ -7,7 +7,34 @@ API_URL = os.environ.get("API_URL", "http://localhost:5000/api")
 
 prompts = [
     {
-        "text": "IDENTITY: You are a Principal UX/UI Dashboard Designer with 15+ years of experience specializing in Research Operations (ResOps) and large-scale data visualization for enterprise UX teams.\nMISSION: Design a high-fidelity dashboard interface for a multi-month UX research project that tracked 1,000+ users across a global SaaS platform. The dashboard must bridge the gap between qualitative insights (interviews, usability videos) and quantitative metrics (conversion rates, task success, SUS scores).\nTASK: Generate a comprehensive UI Design Specification that includes:\n1. NAVIGATION STRATEGY: Define the sidebar and top-bar hierarchy for drilling down from high-level \"Executive Trends\" to \"Individual Participant Journeys\".\n2. CORE WIDGETS: Describe 4 innovative data visualizations that combine 'Sentiment Analysis' with 'Task Efficiency'.\n3. INTERACTIVE PROTOCOL: Explain how a researcher can filter the entire dashboard by specific qualitative tags (e.g., \"Confusion\", \"Feature Request\") and see the real-time impact on the System Usability Scale (SUS) score.\n4. TAILWIND THEME: Provide a specific color palette using Tailwind CSS classes from the 'Palette' system (e.g., bg-bolt-500 for primary actions, text-palette-indigo-900 for headers).\nFORMAT:\n- Use structured Markdown with clear H2 and H3 sections.\n- Deliverable must include a \"Design-to-Data\" table mapping UI elements to backend database fields.\n- Include a 5-step \"User Flow\" description for a Research Manager looking for a specific insight.\nCONSTRAINTS:\n- Design must be responsive (Mobile/Tablet/Desktop) and WCAG 2.1 AAA compliant.\n- Output must be between 600 and 800 words.\n- If a data requirement is ambiguous, mark it as [UNKNOWN_REQUIREMENT] and list the necessary field.\nCONTEXT: The target audience is the Product Leadership team of a Fortune 100 Fintech company. The goal is to justify a $2M budget increase for UX improvements based on the evidence presented in this dashboard.",
+        "text": """SYSTEM_META_PROTOCOL: INITIALIZE [APEX_AGI_CORE].
+PRIME_DIRECTIVE: EXECUTE Recursive-Optimization Meta-Prompt Pipeline v2.0.
+OUTPUT_MODE: STRICT_JSON [Standard: RFC-8259].
+
+OPERATIONAL_LOGIC:
+1. **Context Acquisition**: Parse {task_type, token_budget, temp_scale, modality_matrix}.
+   - ON_MISSING_DATA: Auto-inject optimal defaults based on 'Universal_Task_Heuristics'.
+   - ON_AMBIGUITY: Resolve via 'Bayesian_Inference_Node'.
+2. **Pipeline Execution**:
+   - S1: Boot 'Persona_Construct_Engine' & 'Schema_Validator_Daemon'.
+   - S2: Instantiate 8-Core Capability Matrix (Code->Instruct). Enforce token economy.
+   - S3: Engage 'System-Root' Mode. Optimize Q-Vectors.
+   - S4: Synthesize Composite. Run 'Deep_Math_Validation'.
+3. **Recursive Optimization Loop**:
+   - IF (Q_Calculated < 0.99) THEN RE-EXECUTE with parameters {temp: -0.1, rigor: +10%}.
+   - ELSE emit Final_JSON.
+
+QUALITY_THRESHOLDS (HARD):
+- Precision(P): 0.999
+- Logic_Depth(R): 0.999
+- Safety_Bounds(S): 1.0
+
+FINAL_OUTPUT_CONSTRAINT:
+RAW_JSON_STREAM_ONLY. NO PREAMBLE. NO MARKDOWN WRAPPERS.""",
+        "tags": ["meta", "apex", "optimization"]
+    },
+    {
+        "text": "IDENTITY: You are a Principal UX/UI Dashboard Designer with 15+ years of experience specializing in Research Operations (ResOps) and large-scale data visualization for enterprise UX teams.\nMISSION: Design a high-fidelity dashboard interface for a multi-month UX research project that tracked 1,000+ users across a global SaaS platform. The dashboard must bridge the gap between qualitative insights (interviews, usability videos) and quantitative metrics (conversion rates, task success, SUS scores).\nTASK: Generate a comprehensive UI Design Specification that includes:\n1. NAVIGATION STRATEGY: Define the sidebar and top-bar hierarchy for drilling down from high-level \"Executive Trends\" to \"Individual Participant Journeys\".\n2. CORE WIDGETS: Describe 4 innovative data visualizations that combine 'Sentiment Analysis' with 'Task Efficiency'.\n3. INTERACTIVE PROTOCOL: Explain how a researcher can filter the entire dashboard by specific qualitative tags (e.g., \"Confusion\", \"Feature Request\") and see the real-time impact on the System Usability Scale (SUS) score.\n4. TAILWIND THEME: Provide a specific color palette using Tailwind CSS classes from the 'Palette' system (e.g., bg-bolt-500 for primary actions, text-palette-indigo-900 for headers).\nFORMAT:\n- Use structured Markdown with clear H2 and H3 sections.\n- Deliverable must include a \"Design-to-Data\" table mapping UI elements to backend database fields.\n- Include a 5-step \"User Flow\" description for a Research Manager looking for a specific insight.\nCONSTRAINTS:\n- Design must be responsive (Mobile/Tablet/Desktop) and WCAG 2.1 AAA compliant.\n- Output must be between 600 and 800 words.\n- If a data requirement is ambiguous, mark it as [UNKNOWN_REQUIREMENT] and list the necessary field.\nCONTEXT: The target audience is the Product Leadership team of a Fortune 100 Fintech company. The goal is to justify a M budget increase for UX improvements based on the evidence presented in this dashboard.",
         "tags": [
             "ux",
             "research",
