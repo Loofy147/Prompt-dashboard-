@@ -18,12 +18,12 @@ import math
 
 # PES quality weights (sum = 1.0)
 WEIGHTS = {
-    'wP': 0.18,  # Persona
-    'wT': 0.22,  # Tone
-    'wF': 0.20,  # Format
+    'wP': 0.20,  # Persona
+    'wT': 0.18,  # Tone
+    'wF': 0.18,  # Format
     'wS': 0.18,  # Specificity
-    'wC': 0.12,  # Constraints
-    'wR': 0.10   # Context
+    'wC': 0.13,  # Constraints
+    'wR': 0.13   # Context
 }
 
 

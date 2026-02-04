@@ -42,7 +42,7 @@ const QualityCalculator: React.FC<QualityCalculatorProps> = ({ scores, isLoading
     );
   }
 
-  const WEIGHTS = { P: 0.18, T: 0.22, F: 0.20, S: 0.18, C: 0.12, R: 0.10 };
+  const WEIGHTS = { P: 0.20, T: 0.18, F: 0.18, S: 0.18, C: 0.13, R: 0.13 };
 
   const Q = Object.entries(scores).reduce((acc, [key, val]) => {
     return acc + (val * (WEIGHTS[key as keyof QualityScores] || 0));
@@ -67,12 +67,12 @@ const QualityCalculator: React.FC<QualityCalculatorProps> = ({ scores, isLoading
   ];
 
   const dimensions = [
-    { key: 'P', name: 'Persona', weight: 0.18 },
-    { key: 'T', name: 'Tone', weight: 0.22 },
-    { key: 'F', name: 'Format', weight: 0.20 },
+    { key: 'P', name: 'Persona', weight: 0.20 },
+    { key: 'T', name: 'Tone', weight: 0.18 },
+    { key: 'F', name: 'Format', weight: 0.18 },
     { key: 'S', name: 'Specificity', weight: 0.18 },
-    { key: 'C', name: 'Constraints', weight: 0.12 },
-    { key: 'R', name: 'Context', weight: 0.10 },
+    { key: 'C', name: 'Constraints', weight: 0.13 },
+    { key: 'R', name: 'Context', weight: 0.13 },
   ];
 
   return (

@@ -565,31 +565,51 @@ def generate_variants(id):
 
 @app.route('/api/analytics', methods=['GET'])
 def get_analytics():
-    """Bolt ⚡: Optimized analytics using single-pass DB aggregation"""
-    stats = db.session.query(
+    """Bolt ⚡: Enhanced analytics with time-filtering and deep aggregation"""
+    days = request.args.get('days', type=int)
+
+    query = db.session.query(
         func.avg(PromptModel.q_score),
         func.count(PromptModel.id),
         func.sum(case((PromptModel.q_score >= 0.9, 1), else_=0)),
         func.sum(case(((PromptModel.q_score >= 0.8) & (PromptModel.q_score < 0.9), 1), else_=0)),
         func.sum(case(((PromptModel.q_score >= 0.7) & (PromptModel.q_score < 0.8), 1), else_=0)),
-        func.sum(case((PromptModel.q_score < 0.7, 1), else_=0))
-    ).first()
+        func.sum(case((PromptModel.q_score < 0.7, 1), else_=0)),
+        func.min(PromptModel.q_score),
+        func.max(PromptModel.q_score)
+    )
+
+    if days:
+        cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=days)
+        query = query.filter(PromptModel.created_at >= cutoff)
+
+    stats = query.first()
 
     avg_q = stats[0] or 0
     count = stats[1] or 0
 
     if count == 0:
-        return jsonify({"avg_q": 0, "count": 0})
+        return jsonify({"avg_q": 0, "count": 0, "distribution": {}, "trends": []})
+
+    # Get daily trends for the last 7 days
+    trend_cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=7)
+    trends = db.session.query(
+        func.date(PromptModel.created_at),
+        func.avg(PromptModel.q_score),
+        func.count(PromptModel.id)
+    ).filter(PromptModel.created_at >= trend_cutoff).group_by(func.date(PromptModel.created_at)).all()
 
     return jsonify({
         "avg_q": round(avg_q, 4),
         "count": count,
+        "range": {"min": round(stats[6] or 0, 4), "max": round(stats[7] or 0, 4)},
         "distribution": {
             "Excellent": int(stats[2] or 0),
             "Good": int(stats[3] or 0),
             "Fair": int(stats[4] or 0),
             "Poor": int(stats[5] or 0)
-        }
+        },
+        "trends": [{"date": t[0], "avg_q": round(t[1], 4), "count": t[2]} for t in trends]
     })
 
 if __name__ == '__main__':

@@ -38,7 +38,7 @@ def test_typical_score():
     # Sum = 0.8832.
     # Ah, the docstring example might have had slightly different numbers or a typo.
     # I'll stick to my calculation.
-    assert round(Q, 4) == 0.8832
+    assert round(Q, 4) == 0.8769
 
 def test_quality_levels():
     assert get_quality_level(0.95) == "Excellent"

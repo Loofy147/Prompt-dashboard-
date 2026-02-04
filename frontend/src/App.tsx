@@ -1,56 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Zap, Palette, Layers, ShieldCheck, Download, History, LayoutDashboard, Search } from 'lucide-react';
 import PromptEditor from './components/PromptEditor';
+import PromptCard, { Prompt } from './components/PromptCard';
+import AdvancedAnalyticsDashboard from './components/AdvancedAnalyticsDashboard';
 import ResearchDashboard from './components/ResearchDashboard';
 
-interface Prompt {
-  id: number;
-  text: string;
-  tags: string[];
-  Q_score: number;
-  version: number;
-  parent_id: number | null;
-  created_at: string;
-}
 
-const PromptCard: React.FC<{ prompt: Prompt; onEdit: (p: Prompt) => void }> = React.memo(({ prompt, onEdit }) => {
-  console.log('⚡ Bolt: PromptCard Render:', prompt.id);
-  const getLevelColor = (q: number) => {
-    if (q >= 0.9) return 'bg-green-100 text-green-800 border-green-200';
-    if (q >= 0.8) return 'bg-blue-100 text-blue-800 border-blue-200';
-    if (q >= 0.7) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    return 'bg-red-100 text-red-800 border-red-200';
-  };
 
-  return (
-    <div
-      className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-palette-primary/5 transition-all cursor-pointer group"
-      onClick={() => onEdit(prompt)}
-    >
-      <div className="flex justify-between items-start mb-3">
-        <div className="flex gap-2">
-          <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black border ${getLevelColor(prompt.Q_score)}`}>
-            Q: {prompt.Q_score.toFixed(4)}
-          </span>
-          <span className="px-2 py-0.5 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-bold border border-gray-100 flex items-center gap-1">
-            <History size={8} /> v{prompt.version}
-          </span>
-        </div>
-        <span className="text-[10px] text-gray-300 font-mono">#{prompt.id}</span>
-      </div>
-      <p className="text-sm text-gray-700 line-clamp-3 mb-4 h-15">
-        {prompt.text}
-      </p>
-      <div className="flex flex-wrap gap-1 mt-auto">
-        {prompt.tags.map(tag => (
-          <span key={tag} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px]">
-            {tag}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-});
+
 
 const App: React.FC = () => {
   const [view, setView] = useState<'library' | 'editor' | 'insights'>('editor');
@@ -151,7 +108,8 @@ const App: React.FC = () => {
 
       <main className="max-w-7xl mx-auto p-6">
         {view === 'insights' ? (
-          <ResearchDashboard />
+          <AdvancedAnalyticsDashboard />
+
         ) : view === 'editor' ? (
           <div className="bg-white p-8 rounded-3xl shadow-2xl shadow-palette-dark/5 border border-gray-100">
             <div className="mb-8">
@@ -228,7 +186,7 @@ const App: React.FC = () => {
               </div>
             ) : prompts.length > 0 ? (
               <div className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ contentVisibility: "auto", containIntrinsicSize: "1px 400px" }}>
                   {prompts.map(prompt => (
                     <PromptCard
                       key={prompt.id}
@@ -274,6 +232,6 @@ const App: React.FC = () => {
       </main>
     </div>
   );
-});
+};
 
 export default App;
