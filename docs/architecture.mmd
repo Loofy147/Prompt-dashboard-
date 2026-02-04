@@ -1,35 +1,35 @@
 graph TB
-    subgraph "Client Layer"
+    subgraph "APEX Client Layer [Target Latency: <100ms]"
         Browser[Web Browser]
+        Mobile[Mobile Client]
     end
 
-    subgraph "Frontend - React SPA"
-        LibraryView[Library View<br/>Prompt Grid + Search]
-        EditorView[Editor View<br/>Live Q Calculator]
-        AnalyzerView[Analyzer View<br/>A/B/C Comparison]
-        ReportsView[Reports View<br/>Analytics Dashboard]
+    subgraph "Frontend - React 18 / TS [TIER-1]"
+        LibraryView[Library View<br/>Virtual Grid + Paginated Fetch]
+        EditorView[Editor View<br/>Debounced Q-Engine]
+        AnalyzerView[Analyzer View<br/>Parallel A/B/C Processing]
+        ReportsView[Advanced Analytics<br/>Recharts + Time-Aggregations]
 
-        Components[Shared Components<br/>PromptCard, QualityCalculator,<br/>VariantComparison, SearchBar]
-        StateManagement[State Management<br/>Redux Toolkit / Zustand]
-        APIClient[API Client<br/>React Query + Axios]
+        Components[Apex Components<br/>PromptCard (Memoized),<br/>QualityCalculator (Radar Chart),<br/>OptimizationPanel]
+        StateManagement[State Management<br/>TanStack Query + Context]
+        APIClient[API Client<br/>Axios + Retry Logic]
     end
 
-    subgraph "Backend - Flask/FastAPI"
-        APIGateway[API Gateway<br/>JWT Auth Middleware]
+    subgraph "Backend - Flask / Python 3.11 [Target: sub-200ms processing]"
+        APIGateway[API Gateway<br/>CORS + JWT + Rate Limiting]
 
-        PromptController[Prompt Controller<br/>CRUD Operations]
-        AnalysisController[Analysis Controller<br/>Quality Scoring]
-        VariantController[Variant Controller<br/>A/B/C Generation]
-        AnalyticsController[Analytics Controller<br/>Aggregations]
-        ExportController[Export Controller<br/>JSON/MD/CSV]
+        PromptController[Prompt Controller<br/>SQLAlchemy Pagination]
+        AnalysisController[Analysis Controller<br/>Feature Extraction Pipeline]
+        VariantController[Variant Controller<br/>Deterministic Generation]
+        AnalyticsController[Analytics Controller<br/>SQL-Level Aggregations]
 
-        QualityEngine[Quality Engine<br/>quality_calculator.py]
-        NLPAnalyzer[NLP Analyzer<br/>feature_analyzer.py<br/>spaCy]
-        VariantGenerator[Variant Generator<br/>Text Transformations]
+        QualityEngine[PES Quality Engine<br/>quality_calculator.py]
+        NLPAnalyzer[NLP Analyzer<br/>feature_analyzer.py<br/>Bolt ⚡ Regex + spaCy]
+        Validator[Meta-Architect Validator<br/>validator.py]
     end
 
-    subgraph "Data Layer"
-        SQLite[(SQLite Database<br/>prompts, variants,<br/>tags, versions,<br/>test_runs)]
+    subgraph "Data Layer [High Consistency]"
+        SQLite[(SQLite Database<br/>B-Tree Indexes on q_score,<br/>created_at, parent_id)]
     end
 
     Browser --> LibraryView
@@ -42,40 +42,27 @@ graph TB
     AnalyzerView --> APIClient
     ReportsView --> APIClient
 
-    LibraryView --> Components
-    EditorView --> Components
-    AnalyzerView --> Components
-    ReportsView --> Components
-
-    APIClient --> StateManagement
     APIClient --> APIGateway
 
     APIGateway --> PromptController
     APIGateway --> AnalysisController
     APIGateway --> VariantController
     APIGateway --> AnalyticsController
-    APIGateway --> ExportController
 
-    PromptController --> SQLite
     AnalysisController --> QualityEngine
     AnalysisController --> NLPAnalyzer
-    VariantController --> VariantGenerator
-    VariantController --> QualityEngine
+    AnalysisController --> Validator
+
+    PromptController --> SQLite
     AnalyticsController --> SQLite
-    ExportController --> SQLite
 
-    QualityEngine --> SQLite
-    NLPAnalyzer -.->|Optional| ExternalNLP[spaCy Models]
-    VariantGenerator --> SQLite
+    style Browser fill:#e1f5ff,stroke:#005a9c
+    style SQLite fill:#fff4e1,stroke:#a67c00
+    style QualityEngine fill:#ffe1f5,stroke:#9c005a
+    style NLPAnalyzer fill:#ffe1f5,stroke:#9c005a
+    style Validator fill:#e1ffe1,stroke:#009c00
 
-    style Browser fill:#e1f5ff
-    style SQLite fill:#fff4e1
-    style QualityEngine fill:#ffe1f5
-    style NLPAnalyzer fill:#ffe1f5
-    style VariantGenerator fill:#ffe1f5
-
-%% Data Flow Examples
-%% 1. Create Prompt: Browser -> EditorView -> APIClient -> PromptController -> SQLite
-%% 2. Analyze Quality: EditorView -> AnalysisController -> QualityEngine -> NLPAnalyzer -> return scores
-%% 3. Generate Variants: AnalyzerView -> VariantController -> VariantGenerator -> QualityEngine -> SQLite
-%% 4. View Analytics: ReportsView -> AnalyticsController -> SQLite -> aggregate -> return metrics
+%% Operational Metrics
+%% 1. p95 Analysis Latency: <150ms
+%% 2. p95 Variant Generation: <300ms
+%% 3. Database Write Integrity: 100%
