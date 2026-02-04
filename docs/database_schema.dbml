@@ -1,19 +1,28 @@
-// Prompt Dashboard Manager Database Schema
+// Apex Meta-Architect Database Schema v3.0
 
 Table prompts {
   id integer [primary key]
   text text [not null]
   Q_score float [not null]
-  created_at timestamp
-  deleted_at timestamp
+  parent_id integer [null] // Lineage tracking
+  version integer [default: 1]
+  created_at timestamp [default: `now()`]
+  deleted_at timestamp [null]
+
+  Indexes {
+    Q_score
+    created_at
+    parent_id
+  }
 }
 
 Table variants {
   id integer [primary key]
   prompt_id integer
-  type text // concise, neutral, commanding
+  type text // enum: concise, neutral, commanding
   text text
   Q_score float
+  features jsonb // PES breakdown
 }
 
 Table tags {
@@ -34,6 +43,7 @@ Table versions {
   created_at timestamp
 }
 
+Ref: prompts.parent_id > prompts.id
 Ref: variants.prompt_id > prompts.id
 Ref: prompt_tags.prompt_id > prompts.id
 Ref: prompt_tags.tag_id > tags.id
