@@ -1,54 +1,81 @@
 import pytest
 import json
-import math
+from validator import validate_apex_output, ValidationError
 
-def test_apex_pipeline_logic():
-    # Mock output matching the Apex AGI Core requirements
+def test_meta_architect_schema_validation():
+    # Mock output following the v3.0 standard
     mock_output = {
-        "FinalComposite": "SYSTEM_META_PROTOCOL: INITIALIZE [APEX_AGI_CORE]...",
-        "Q_values": {
-            "FinalComposite_Q": 0.9949,
-            "FinalComposite_features": {
-                "P": 0.998,
-                "T": 0.995,
-                "F": 0.995,
-                "S": 0.995,
-                "C": 0.99,
-                "R": 0.995
-            }
+        "meta_analysis": {
+            "input_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "timestamp_utc": "2026-02-04T00:00:00Z",
+            "processing_time_ms": 1250,
+            "confidence_score": 0.9950
+        },
+        "primary_output": {
+            "response_type": "technical_spec",
+            "content": "Full technical specification content...",
+            "word_count": 450,
+            "readability_score": 45.5
+        },
+        "quality_metrics": {
+            "P_persona": 1.0,
+            "T_tone": 1.0,
+            "F_format": 1.0,
+            "S_specificity": 1.0,
+            "C_constraints": 1.0,
+            "R_context": 1.0,
+            "Q_composite": 1.0000
+        },
+        "validation": {
+            "schema_compliance": True,
+            "constraint_violations": [],
+            "edge_cases_handled": ["Large payload", "Missing context fallback"],
+            "test_coverage": 98.5
+        },
+        "metadata": {
+            "tokens_consumed": 850,
+            "estimated_cost_usd": 0.0125,
+            "model_version": "claude-3-5-sonnet-20241022",
+            "optimization_iterations": 2
         }
     }
-    output_str = json.dumps(mock_output)
 
-    # 1. Strict RFC-8259 Parse
-    try:
-        data = json.loads(output_str)
-    except json.JSONDecodeError as e:
-        pytest.fail(f"JSON Integrity Violation: {e}")
+    # This should pass
+    assert validate_apex_output(mock_output) is True
 
-    # 2. Structure Validation
-    assert 'FinalComposite' in data, "Core Missing"
-    assert 'Q_values' in data, "Metrics Missing"
+def test_meta_architect_quality_breach():
+    mock_output = {
+        "meta_analysis": {},
+        "primary_output": {},
+        "quality_metrics": {"Q_composite": 0.8500},  # Below 0.90
+        "validation": {"test_coverage": 96.0, "constraint_violations": []},
+        "metadata": {}
+    }
 
-    # 3. Recursive Loop Logic Check
-    q_final = data['Q_values']['FinalComposite_Q']
-    assert q_final > 0.99, f"Optimization Failure: {q_final} <= 0.99"
+    with pytest.raises(ValidationError, match="Quality threshold breach"):
+        validate_apex_output(mock_output)
 
-    # 4. Feature Integrity
-    features = data['Q_values']['FinalComposite_features']
-    assert features['S'] >= 0.99, "Safety Threshold Breach"  # Adjusted to match features 'S' (0.995)
-    assert features['P'] >= 0.995, "Precision Threshold Breach"
+def test_meta_architect_coverage_breach():
+    mock_output = {
+        "meta_analysis": {},
+        "primary_output": {},
+        "quality_metrics": {"Q_composite": 0.9500},
+        "validation": {"test_coverage": 90.0, "constraint_violations": []}, # Below 95.0
+        "metadata": {}
+    }
 
-def test_apex_store_integration():
-    # Verify the prompt_store.json has the Apex prompt
+    with pytest.raises(ValidationError, match="Test coverage breach"):
+        validate_apex_output(mock_output)
+
+def test_store_integration_meta_architect():
     with open('prompt_assets/prompt_store.json', 'r') as f:
         store = json.load(f)
 
-    found_apex = False
+    found_architect = False
     for t in store['templates']:
-        if "Apex AGI Core" in t['name']:
-            found_apex = True
-            assert t['Q'] > 0.99
+        if "Apex Meta-Architect" in t['name']:
+            found_architect = True
+            assert t['Q'] == 1.0
             break
 
-    assert found_apex, "Apex AGI Core template not found in store"
+    assert found_architect, "Apex Meta-Architect template not found in store"
